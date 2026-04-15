@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "FYP Frontend",
+    "slug": "fyp-frontend",
+    "scheme": "fypfrontend",
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
+    "plugins": [
+      "expo-router",
+      "expo-web-browser"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

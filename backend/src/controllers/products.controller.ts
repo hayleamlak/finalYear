@@ -101,10 +101,18 @@ export async function getProductById(req: Request, res: Response) {
 }
 
 export async function createProduct(req: Request, res: Response) {
+  if (!req.user) {
+    throw new ApiError(401, "Not authenticated");
+  }
+
   const parsed = createProductSchema.safeParse(req.body);
 
   if (!parsed.success) {
     throw new ApiError(400, "Invalid product payload");
+  }
+
+  if (parsed.data.farmer_id !== req.user.userId) {
+    throw new ApiError(403, "You can only create products for your own farmer account");
   }
 
   const farmer = await prisma.farmer.findUnique({

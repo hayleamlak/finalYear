@@ -1,15 +1,35 @@
 import { NextFunction, Request, Response } from "express";
-import jwt, { JwtPayload } from "jsonwebtoken";
+import { verifyToken } from "@clerk/backend";
 
 import { env } from "../config/env";
 import { ApiError } from "./errorHandler";
 
-type TokenPayload = JwtPayload & {
-  userId: string;
-  role: string;
-};
+function extractRole(payload: Record<string, unknown>): string {
+  const directRole = payload.role;
+  if (typeof directRole === "string" && directRole.length > 0) {
+    return directRole;
+  }
 
-export function requireAuth(req: Request, _res: Response, next: NextFunction) {
+  const metadata = payload.metadata;
+  if (metadata && typeof metadata === "object") {
+    const role = (metadata as Record<string, unknown>).role;
+    if (typeof role === "string" && role.length > 0) {
+      return role;
+    }
+  }
+
+  const publicMetadata = payload.public_metadata;
+  if (publicMetadata && typeof publicMetadata === "object") {
+    const role = (publicMetadata as Record<string, unknown>).role;
+    if (typeof role === "string" && role.length > 0) {
+      return role;
+    }
+  }
+
+  return "BUYER";
+}
+
+export async function requireAuth(req: Request, _res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
 
   if (!authHeader?.startsWith("Bearer ")) {
@@ -19,19 +39,36 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction) {
   const token = authHeader.slice(7);
 
   try {
-    const decoded = jwt.verify(token, env.JWT_SECRET) as TokenPayload;
+    const payload = await verifyToken(token, {
+      secretKey: env.CLERK_SECRET_KEY,
+    });
+    const userId = payload.sub;
 
-    if (!decoded.userId || !decoded.role) {
+    if (!userId) {
       return next(new ApiError(401, "Invalid token payload"));
     }
 
     req.user = {
-      userId: decoded.userId,
-      role: decoded.role,
+      userId,
+      role: extractRole(payload as Record<string, unknown>),
     };
 
     next();
   } catch {
-    next(new ApiError(401, "Invalid or expired token"));
+    next(new ApiError(401, "Invalid or expired Clerk token"));
   }
+}
+
+export function requireRole(allowedRoles: string[]) {
+  return (req: Request, _res: Response, next: NextFunction) => {
+    if (!req.user) {
+      return next(new ApiError(401, "Authentication required"));
+    }
+
+    if (!allowedRoles.includes(req.user.role)) {
+      return next(new ApiError(403, "Insufficient permissions"));
+    }
+
+    next();
+  };
 }

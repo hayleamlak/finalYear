@@ -1,9 +1,10 @@
 import { Router } from "express";
 
-import { issueToken } from "../controllers/auth.controller";
+import { getCurrentUser } from "../controllers/auth.controller";
+import { requireAuth } from "../middleware/auth";
 
 const authRouter = Router();
 
-authRouter.post("/token", issueToken);
+authRouter.get("/me", requireAuth, getCurrentUser);
 
 export { authRouter };
