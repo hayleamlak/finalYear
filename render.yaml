@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: fyp-backend
+    runtime: node
+    rootDir: backend
+    buildCommand: npm ci && npm run prisma:generate && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: CLERK_SECRET_KEY
+        sync: false
+      - key: CLIENT_ORIGIN
+        sync: false

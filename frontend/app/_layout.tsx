@@ -1,8 +1,11 @@
 import { ClerkProvider } from "@clerk/clerk-expo";
 import { Stack } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
 import * as SecureStore from "expo-secure-store";
 
 import { env } from "@/lib/env";
+
+WebBrowser.maybeCompleteAuthSession();
 
 const tokenCache = {
   async getToken(key: string) {
