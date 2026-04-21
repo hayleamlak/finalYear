@@ -1,5 +1,5 @@
 import { useAuth } from "@clerk/clerk-expo";
-import { useRouter } from "expo-router";
+import { usePathname, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -14,11 +14,15 @@ import {
   View,
 } from "react-native";
 
+import { ThemeToggleButton } from "@/components/theme/ThemeToggleButton";
+import { BottomNavBar } from "@/components/navigation/BottomNavBar";
+import { useTheme } from "@/context/ThemeContext";
 import { apiFetch } from "@/lib/api";
+import { useCart } from "@/context/CartContext";
 import { ProductListResponse, ProductSummary } from "@/types/product";
 
 const formatPrice = (value: number) =>
-  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
+  new Intl.NumberFormat("en-ET", { style: "currency", currency: "ETB" }).format(value);
 
 function getStockLabel(stock: number) {
   if (stock <= 0) {
@@ -34,7 +38,10 @@ function getStockLabel(stock: number) {
 
 export function ProductBrowseScreen() {
   const router = useRouter();
+  const pathname = usePathname();
+  const { colors } = useTheme();
   const { isSignedIn, signOut } = useAuth();
+  const { itemCount } = useCart();
   const [items, setItems] = useState<ProductSummary[]>([]);
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -82,6 +89,8 @@ export function ProductBrowseScreen() {
     void loadProducts(search);
   };
 
+  const styles = createStyles(colors);
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <FlatList
@@ -92,8 +101,11 @@ export function ProductBrowseScreen() {
         ListHeaderComponent={
           <View>
             <View style={styles.hero}>
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>Market</Text>
+              <View style={styles.heroTopRow}>
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>Market</Text>
+                </View>
+                <ThemeToggleButton />
               </View>
               <Text style={styles.title}>Fresh coffee, ready to browse</Text>
               <Text style={styles.subtitle}>{subtitle}</Text>
@@ -102,7 +114,7 @@ export function ProductBrowseScreen() {
                 <TextInput
                   style={styles.searchInput}
                   placeholder="Search products"
-                  placeholderTextColor="#94a3b8"
+                  placeholderTextColor={colors.textSubtle}
                   value={search}
                   onChangeText={setSearch}
                   returnKeyType="search"
@@ -126,8 +138,13 @@ export function ProductBrowseScreen() {
             </View>
 
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Featured products</Text>
-              <Text style={styles.sectionCaption}>Tap a card to open the product details route.</Text>
+              <View style={styles.sectionRow}>
+                <Text style={styles.sectionTitle}>Featured products</Text>
+                <Pressable style={styles.cartShortcut} onPress={() => router.push("/cart") }>
+                  <Text style={styles.cartShortcutText}>Cart ({itemCount})</Text>
+                </Pressable>
+              </View>
+              <Text style={styles.sectionCaption}>Tap a card to open details and add to cart.</Text>
             </View>
           </View>
         }
@@ -194,248 +211,287 @@ export function ProductBrowseScreen() {
           </View>
         }
       />
+      <BottomNavBar currentPath={pathname} />
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#07111f",
-  },
-  content: {
-    padding: 20,
-    paddingBottom: 32,
-  },
-  hero: {
-    backgroundColor: "#0f1b2d",
-    borderRadius: 28,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: "rgba(245, 158, 11, 0.18)",
-    marginBottom: 18,
-  },
-  badge: {
-    alignSelf: "flex-start",
-    backgroundColor: "rgba(245, 158, 11, 0.16)",
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginBottom: 14,
-  },
-  badgeText: {
-    color: "#fbbf24",
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 1,
-    textTransform: "uppercase",
-  },
-  title: {
-    color: "#f8fafc",
-    fontSize: 30,
-    lineHeight: 36,
-    fontWeight: "800",
-    marginBottom: 10,
-  },
-  subtitle: {
-    color: "#cbd5e1",
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  searchRow: {
-    flexDirection: "row",
-    gap: 10,
-    marginTop: 18,
-  },
-  searchInput: {
-    flex: 1,
-    backgroundColor: "#152238",
-    color: "#f8fafc",
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderWidth: 1,
-    borderColor: "rgba(148, 163, 184, 0.18)",
-  },
-  searchButton: {
-    backgroundColor: "#f59e0b",
-    borderRadius: 16,
-    paddingHorizontal: 18,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  searchButtonText: {
-    color: "#111827",
-    fontWeight: "800",
-  },
-  statsRow: {
-    flexDirection: "row",
-    gap: 12,
-    marginTop: 18,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: "#132033",
-    borderRadius: 18,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: "rgba(148, 163, 184, 0.1)",
-  },
-  statNumber: {
-    color: "#f8fafc",
-    fontSize: 22,
-    fontWeight: "800",
-  },
-  statLabel: {
-    color: "#94a3b8",
-    marginTop: 4,
-    fontSize: 12,
-  },
-  sectionHeader: {
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    color: "#f8fafc",
-    fontSize: 20,
-    fontWeight: "800",
-  },
-  sectionCaption: {
-    color: "#94a3b8",
-    marginTop: 4,
-  },
-  loadingState: {
-    paddingVertical: 30,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  loadingText: {
-    color: "#cbd5e1",
-    marginTop: 10,
-  },
-  emptyState: {
-    paddingVertical: 28,
-    paddingHorizontal: 20,
-    backgroundColor: "#0f1b2d",
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: "rgba(148, 163, 184, 0.12)",
-    marginBottom: 14,
-  },
-  emptyTitle: {
-    color: "#f8fafc",
-    fontSize: 18,
-    fontWeight: "800",
-  },
-  emptyText: {
-    color: "#cbd5e1",
-    marginTop: 8,
-    lineHeight: 20,
-  },
-  retryButton: {
-    marginTop: 14,
-    alignSelf: "flex-start",
-    backgroundColor: "#f59e0b",
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  retryButtonText: {
-    color: "#111827",
-    fontWeight: "800",
-  },
-  card: {
-    backgroundColor: "#ffffff",
-    borderRadius: 24,
-    overflow: "hidden",
-    marginBottom: 14,
-    shadowColor: "#000",
-    shadowOpacity: 0.12,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 4,
-  },
-  cardImage: {
-    width: "100%",
-    height: 200,
-    backgroundColor: "#e2e8f0",
-  },
-  cardBody: {
-    padding: 16,
-  },
-  cardTopRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 12,
-    alignItems: "flex-start",
-  },
-  cardTitle: {
-    flex: 1,
-    color: "#0f172a",
-    fontSize: 18,
-    fontWeight: "800",
-  },
-  cardPrice: {
-    color: "#7c2d12",
-    fontSize: 16,
-    fontWeight: "800",
-  },
-  cardDescription: {
-    color: "#475569",
-    marginTop: 8,
-    lineHeight: 20,
-  },
-  cardFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 14,
-  },
-  cardMeta: {
-    color: "#64748b",
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  footer: {
-    paddingTop: 10,
-    paddingBottom: 24,
-  },
-  footerActions: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  primaryFooterButton: {
-    flex: 1,
-    backgroundColor: "#f59e0b",
-    borderRadius: 16,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  primaryFooterButtonText: {
-    color: "#111827",
-    fontWeight: "800",
-  },
-  secondaryFooterButton: {
-    flex: 1,
-    backgroundColor: "#132033",
-    borderRadius: 16,
-    paddingVertical: 14,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(148, 163, 184, 0.16)",
-  },
-  secondaryFooterButtonText: {
-    color: "#f8fafc",
-    fontWeight: "800",
-  },
-  signOutButton: {
-    backgroundColor: "#132033",
-    borderRadius: 16,
-    paddingVertical: 14,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(148, 163, 184, 0.16)",
-  },
-  signOutButtonText: {
-    color: "#f8fafc",
-    fontWeight: "800",
-  },
-});
+const createStyles = (colors: {
+  background: string;
+  surface: string;
+  surfaceAlt: string;
+  text: string;
+  textMuted: string;
+  textSubtle: string;
+  border: string;
+  primary: string;
+  primaryText: string;
+  accent: string;
+  accentSoft: string;
+}) =>
+  StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    content: {
+      padding: 20,
+      paddingBottom: 110,
+    },
+    hero: {
+      backgroundColor: colors.surface,
+      borderRadius: 28,
+      padding: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginBottom: 18,
+    },
+    heroTopRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      gap: 10,
+      marginBottom: 14,
+    },
+    badge: {
+      alignSelf: "flex-start",
+      backgroundColor: colors.accentSoft,
+      borderRadius: 999,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+    },
+    badgeText: {
+      color: colors.accent,
+      fontSize: 12,
+      fontWeight: "700",
+      letterSpacing: 1,
+      textTransform: "uppercase",
+    },
+    title: {
+      color: colors.text,
+      fontSize: 30,
+      lineHeight: 36,
+      fontWeight: "800",
+      marginBottom: 10,
+    },
+    subtitle: {
+      color: colors.textMuted,
+      fontSize: 15,
+      lineHeight: 22,
+    },
+    searchRow: {
+      flexDirection: "row",
+      gap: 10,
+      marginTop: 18,
+    },
+    searchInput: {
+      flex: 1,
+      backgroundColor: colors.surfaceAlt,
+      color: colors.text,
+      borderRadius: 16,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    searchButton: {
+      backgroundColor: colors.primary,
+      borderRadius: 16,
+      paddingHorizontal: 18,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    searchButtonText: {
+      color: colors.primaryText,
+      fontWeight: "800",
+    },
+    statsRow: {
+      flexDirection: "row",
+      gap: 12,
+      marginTop: 18,
+    },
+    statCard: {
+      flex: 1,
+      backgroundColor: colors.surfaceAlt,
+      borderRadius: 18,
+      padding: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    statNumber: {
+      color: colors.text,
+      fontSize: 22,
+      fontWeight: "800",
+    },
+    statLabel: {
+      color: colors.textSubtle,
+      marginTop: 4,
+      fontSize: 12,
+    },
+    sectionHeader: {
+      marginBottom: 12,
+    },
+    sectionRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      gap: 12,
+    },
+    sectionTitle: {
+      color: colors.text,
+      fontSize: 20,
+      fontWeight: "800",
+    },
+    cartShortcut: {
+      backgroundColor: colors.surfaceAlt,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+    },
+    cartShortcutText: {
+      color: colors.text,
+      fontWeight: "700",
+      fontSize: 12,
+    },
+    sectionCaption: {
+      color: colors.textSubtle,
+      marginTop: 4,
+    },
+    loadingState: {
+      paddingVertical: 30,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    loadingText: {
+      color: colors.textMuted,
+      marginTop: 10,
+    },
+    emptyState: {
+      paddingVertical: 28,
+      paddingHorizontal: 20,
+      backgroundColor: colors.surface,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginBottom: 14,
+    },
+    emptyTitle: {
+      color: colors.text,
+      fontSize: 18,
+      fontWeight: "800",
+    },
+    emptyText: {
+      color: colors.textMuted,
+      marginTop: 8,
+      lineHeight: 20,
+    },
+    retryButton: {
+      marginTop: 14,
+      alignSelf: "flex-start",
+      backgroundColor: colors.primary,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+    },
+    retryButtonText: {
+      color: colors.primaryText,
+      fontWeight: "800",
+    },
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: 24,
+      overflow: "hidden",
+      marginBottom: 14,
+      shadowColor: "#000",
+      shadowOpacity: 0.12,
+      shadowRadius: 20,
+      shadowOffset: { width: 0, height: 8 },
+      elevation: 4,
+    },
+    cardImage: {
+      width: "100%",
+      height: 200,
+      backgroundColor: colors.surfaceAlt,
+    },
+    cardBody: {
+      padding: 16,
+    },
+    cardTopRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      gap: 12,
+      alignItems: "flex-start",
+    },
+    cardTitle: {
+      flex: 1,
+      color: colors.text,
+      fontSize: 18,
+      fontWeight: "800",
+    },
+    cardPrice: {
+      color: colors.accent,
+      fontSize: 16,
+      fontWeight: "800",
+    },
+    cardDescription: {
+      color: colors.textMuted,
+      marginTop: 8,
+      lineHeight: 20,
+    },
+    cardFooter: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      marginTop: 14,
+    },
+    cardMeta: {
+      color: colors.textSubtle,
+      fontSize: 12,
+      fontWeight: "600",
+    },
+    footer: {
+      paddingTop: 10,
+      paddingBottom: 24,
+    },
+    footerActions: {
+      flexDirection: "row",
+      gap: 12,
+    },
+    primaryFooterButton: {
+      flex: 1,
+      backgroundColor: colors.primary,
+      borderRadius: 16,
+      paddingVertical: 14,
+      alignItems: "center",
+    },
+    primaryFooterButtonText: {
+      color: colors.primaryText,
+      fontWeight: "800",
+    },
+    secondaryFooterButton: {
+      flex: 1,
+      backgroundColor: colors.surfaceAlt,
+      borderRadius: 16,
+      paddingVertical: 14,
+      alignItems: "center",
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    secondaryFooterButtonText: {
+      color: colors.text,
+      fontWeight: "800",
+    },
+    signOutButton: {
+      backgroundColor: colors.surfaceAlt,
+      borderRadius: 16,
+      paddingVertical: 14,
+      alignItems: "center",
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    signOutButtonText: {
+      color: colors.text,
+      fontWeight: "800",
+    },
+  });

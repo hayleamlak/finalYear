@@ -3,6 +3,8 @@ import { Stack } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import * as SecureStore from "expo-secure-store";
 
+import { CartProvider } from "@/context/CartContext";
+import { ThemeProvider } from "@/context/ThemeContext";
 import { env } from "@/lib/env";
 
 WebBrowser.maybeCompleteAuthSession();
@@ -19,7 +21,11 @@ const tokenCache = {
 export default function RootLayout() {
   return (
     <ClerkProvider publishableKey={env.clerkPublishableKey} tokenCache={tokenCache}>
-      <Stack screenOptions={{ headerShown: false }} />
+      <ThemeProvider>
+        <CartProvider>
+          <Stack screenOptions={{ headerShown: false }} />
+        </CartProvider>
+      </ThemeProvider>
     </ClerkProvider>
   );
 }

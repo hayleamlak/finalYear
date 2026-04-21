@@ -1,8 +1,8 @@
-import { useAuth } from "@clerk/clerk-expo";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, usePathname, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Image,
   Pressable,
   ScrollView,
@@ -12,10 +12,14 @@ import {
   View,
 } from "react-native";
 
+import { ThemeToggleButton } from "@/components/theme/ThemeToggleButton";
+import { BottomNavBar } from "@/components/navigation/BottomNavBar";
 import { apiFetch } from "@/lib/api";
+import { useCart } from "@/context/CartContext";
+import { useTheme } from "@/context/ThemeContext";
 import { ProductDetailsResponse } from "@/types/product";
 
-const formatPrice = (value: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
+const formatPrice = (value: number) => new Intl.NumberFormat("en-ET", { style: "currency", currency: "ETB" }).format(value);
 
 function getStockLabel(stock: number) {
   if (stock <= 0) {
@@ -29,18 +33,32 @@ function getStockLabel(stock: number) {
   return "Available now";
 }
 
-function FieldRow({ label, value }: { label: string; value: string }) {
+function FieldRow({
+  label,
+  value,
+  fieldRowStyle,
+  fieldLabelStyle,
+  fieldValueStyle,
+}: {
+  label: string;
+  value: string;
+  fieldRowStyle: object;
+  fieldLabelStyle: object;
+  fieldValueStyle: object;
+}) {
   return (
-    <View style={styles.fieldRow}>
-      <Text style={styles.fieldLabel}>{label}</Text>
-      <Text style={styles.fieldValue}>{value}</Text>
+    <View style={fieldRowStyle}>
+      <Text style={fieldLabelStyle}>{label}</Text>
+      <Text style={fieldValueStyle}>{value}</Text>
     </View>
   );
 }
 
 export default function ProductDetailsScreen() {
   const router = useRouter();
-  const { isSignedIn } = useAuth();
+  const pathname = usePathname();
+  const { colors } = useTheme();
+  const { addItem, getQuantityForProduct } = useCart();
   const { productId } = useLocalSearchParams<{ productId?: string | string[] }>();
   const resolvedProductId = useMemo(() => (Array.isArray(productId) ? productId[0] : productId), [productId]);
   const [product, setProduct] = useState<ProductDetailsResponse["data"] | null>(null);
@@ -73,13 +91,43 @@ export default function ProductDetailsScreen() {
 
   const farmerName = product ? `${product.farmer.first_name} ${product.farmer.last_name}` : "";
   const description = product?.product_detail ?? product?.description?.flavorNotes ?? "No description was provided for this product yet.";
+  const quantityInCart = product ? getQuantityForProduct(product.id) : 0;
+
+  const onAddToCart = () => {
+    if (!product) {
+      return;
+    }
+
+    if (product.stock <= 0) {
+      Alert.alert("Out of stock", "This product is currently unavailable.");
+      return;
+    }
+
+    addItem({
+      id: product.id,
+      product_name: product.product_name,
+      price: product.price,
+      stock: product.stock,
+      image: product.image,
+      product_detail: product.product_detail,
+      farmer_id: product.farmer_id,
+      createdAt: product.createdAt,
+    });
+
+    Alert.alert("Added to cart", `${product.product_name} was added to your cart.`);
+  };
+
+  const styles = createStyles(colors);
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        <Pressable style={styles.backButton} onPress={() => router.back()}>
-          <Text style={styles.backButtonText}>Back</Text>
-        </Pressable>
+        <View style={styles.topRow}>
+          <Pressable style={styles.backButton} onPress={() => router.back()}>
+            <Text style={styles.backButtonText}>Back</Text>
+          </Pressable>
+          <ThemeToggleButton />
+        </View>
 
         {isLoading ? (
           <View style={styles.loadingState}>
@@ -130,64 +178,153 @@ export default function ProductDetailsScreen() {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Coffee details</Text>
               <View style={styles.infoCard}>
-                <FieldRow label="Origin" value={product.description?.origion ?? "Not specified"} />
-                <FieldRow label="Flavor notes" value={product.description?.flavorNotes ?? "Not specified"} />
-                <FieldRow label="Roast level" value={product.description?.roastLevel ?? "Not specified"} />
-                <FieldRow label="Processing method" value={product.description?.processingMethod ?? "Not specified"} />
-                <FieldRow label="Processed" value={product.description?.processed ?? "Not specified"} />
-                <FieldRow label="Grind type" value={product.description?.grindType ?? "Not specified"} />
-                <FieldRow label="Grind sizes" value={product.description?.grindSizes ?? "Not specified"} />
-                <FieldRow label="Sustainable" value={product.description?.isSustainable ?? "Not specified"} />
+                <FieldRow
+                  label="Origin"
+                  value={product.description?.origion ?? "N/A"}
+                  fieldRowStyle={styles.fieldRow}
+                  fieldLabelStyle={styles.fieldLabel}
+                  fieldValueStyle={styles.fieldValue}
+                />
+                <FieldRow
+                  label="Flavor notes"
+                  value={product.description?.flavorNotes ?? "N/A"}
+                  fieldRowStyle={styles.fieldRow}
+                  fieldLabelStyle={styles.fieldLabel}
+                  fieldValueStyle={styles.fieldValue}
+                />
+                <FieldRow
+                  label="Roast level"
+                  value={product.description?.roastLevel ?? "N/A"}
+                  fieldRowStyle={styles.fieldRow}
+                  fieldLabelStyle={styles.fieldLabel}
+                  fieldValueStyle={styles.fieldValue}
+                />
+                <FieldRow
+                  label="Processing method"
+                  value={product.description?.processingMethod ?? "N/A"}
+                  fieldRowStyle={styles.fieldRow}
+                  fieldLabelStyle={styles.fieldLabel}
+                  fieldValueStyle={styles.fieldValue}
+                />
+                <FieldRow
+                  label="Processed"
+                  value={product.description?.processed ?? "N/A"}
+                  fieldRowStyle={styles.fieldRow}
+                  fieldLabelStyle={styles.fieldLabel}
+                  fieldValueStyle={styles.fieldValue}
+                />
+                <FieldRow
+                  label="Grind type"
+                  value={product.description?.grindType ?? "N/A"}
+                  fieldRowStyle={styles.fieldRow}
+                  fieldLabelStyle={styles.fieldLabel}
+                  fieldValueStyle={styles.fieldValue}
+                />
+                <FieldRow
+                  label="Grind sizes"
+                  value={product.description?.grindSizes ?? "N/A"}
+                  fieldRowStyle={styles.fieldRow}
+                  fieldLabelStyle={styles.fieldLabel}
+                  fieldValueStyle={styles.fieldValue}
+                />
+                <FieldRow
+                  label="Sustainable"
+                  value={product.description?.isSustainable ?? "N/A"}
+                  fieldRowStyle={styles.fieldRow}
+                  fieldLabelStyle={styles.fieldLabel}
+                  fieldValueStyle={styles.fieldValue}
+                />
               </View>
             </View>
 
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Farmer</Text>
               <View style={styles.infoCard}>
-                <FieldRow label="Name" value={farmerName} />
-                <FieldRow label="Email" value={product.farmer.email} />
-                <FieldRow label="Farmer ID" value={product.farmer.id} />
+                <FieldRow
+                  label="Name"
+                  value={farmerName}
+                  fieldRowStyle={styles.fieldRow}
+                  fieldLabelStyle={styles.fieldLabel}
+                  fieldValueStyle={styles.fieldValue}
+                />
+                <FieldRow
+                  label="Email"
+                  value={product.farmer.email}
+                  fieldRowStyle={styles.fieldRow}
+                  fieldLabelStyle={styles.fieldLabel}
+                  fieldValueStyle={styles.fieldValue}
+                />
+                <FieldRow
+                  label="Farmer ID"
+                  value={product.farmer.id}
+                  fieldRowStyle={styles.fieldRow}
+                  fieldLabelStyle={styles.fieldLabel}
+                  fieldValueStyle={styles.fieldValue}
+                />
               </View>
             </View>
 
             <View style={styles.actionRow}>
-              <Pressable style={[styles.primaryButton, !isSignedIn && styles.primaryButtonWide]} onPress={() => router.push(isSignedIn ? "/" : "/sign-in") }>
-                <Text style={styles.primaryButtonText}>{isSignedIn ? "Add to cart soon" : "Sign in to continue"}</Text>
+              <Pressable
+                style={[styles.primaryButton, product.stock <= 0 && styles.primaryButtonDisabled]}
+                onPress={onAddToCart}
+                disabled={product.stock <= 0}
+              >
+                <Text style={styles.primaryButtonText}>
+                  {product.stock <= 0 ? "Out of stock" : `Add to cart${quantityInCart > 0 ? ` (${quantityInCart})` : ""}`}
+                </Text>
               </Pressable>
-              {!isSignedIn ? null : (
-                <Pressable style={styles.secondaryButton} onPress={() => router.back()}>
-                  <Text style={styles.secondaryButtonText}>Keep browsing</Text>
-                </Pressable>
-              )}
+              <Pressable style={styles.secondaryButton} onPress={() => router.push("/cart") }>
+                <Text style={styles.secondaryButtonText}>View cart</Text>
+              </Pressable>
             </View>
           </>
         ) : null}
       </ScrollView>
+      <BottomNavBar currentPath={pathname} />
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: {
+  background: string;
+  surface: string;
+  surfaceAlt: string;
+  text: string;
+  textMuted: string;
+  textSubtle: string;
+  border: string;
+  primary: string;
+  primaryText: string;
+  accent: string;
+}) =>
+  StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#07111f",
+    backgroundColor: colors.background,
   },
   container: {
     padding: 20,
-    paddingBottom: 32,
+    paddingBottom: 120,
+  },
+  topRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+    gap: 10,
   },
   backButton: {
     alignSelf: "flex-start",
-    backgroundColor: "#132033",
+    backgroundColor: colors.surfaceAlt,
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "rgba(148, 163, 184, 0.16)",
-    marginBottom: 16,
+    borderColor: colors.border,
   },
   backButtonText: {
-    color: "#f8fafc",
+    color: colors.text,
     fontWeight: "700",
   },
   loadingState: {
@@ -196,36 +333,36 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   loadingText: {
-    color: "#cbd5e1",
+    color: colors.textMuted,
     marginTop: 10,
   },
   errorCard: {
-    backgroundColor: "#0f1b2d",
+    backgroundColor: colors.surface,
     borderRadius: 24,
     padding: 20,
     borderWidth: 1,
-    borderColor: "rgba(148, 163, 184, 0.12)",
+    borderColor: colors.border,
   },
   errorTitle: {
-    color: "#f8fafc",
+    color: colors.text,
     fontSize: 20,
     fontWeight: "800",
   },
   errorText: {
-    color: "#cbd5e1",
+    color: colors.textMuted,
     marginTop: 8,
     lineHeight: 20,
   },
   retryButton: {
     marginTop: 14,
-    backgroundColor: "#f59e0b",
+    backgroundColor: colors.primary,
     borderRadius: 14,
     alignSelf: "flex-start",
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
   retryButtonText: {
-    color: "#111827",
+    color: colors.primaryText,
     fontWeight: "800",
   },
   heroImage: {
@@ -235,11 +372,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#142235",
   },
   card: {
-    backgroundColor: "#0f1b2d",
+    backgroundColor: colors.surface,
     borderRadius: 28,
     padding: 20,
     borderWidth: 1,
-    borderColor: "rgba(148, 163, 184, 0.12)",
+    borderColor: colors.border,
     marginTop: 16,
   },
   titleRow: {
@@ -252,22 +389,22 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   title: {
-    color: "#f8fafc",
+    color: colors.text,
     fontSize: 28,
     fontWeight: "900",
   },
   subtitle: {
-    color: "#94a3b8",
+    color: colors.textSubtle,
     marginTop: 6,
   },
   pricePill: {
-    backgroundColor: "rgba(245, 158, 11, 0.16)",
+    backgroundColor: colors.accent,
     borderRadius: 999,
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
   pricePillText: {
-    color: "#fbbf24",
+    color: colors.primaryText,
     fontWeight: "800",
   },
   metaRow: {
@@ -277,36 +414,36 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   metaPill: {
-    backgroundColor: "#132033",
+    backgroundColor: colors.surfaceAlt,
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
   metaPillText: {
-    color: "#cbd5e1",
+    color: colors.textMuted,
     fontSize: 12,
     fontWeight: "700",
   },
   section: {
     marginTop: 16,
-    backgroundColor: "#0f1b2d",
+    backgroundColor: colors.surface,
     borderRadius: 24,
     padding: 18,
     borderWidth: 1,
-    borderColor: "rgba(148, 163, 184, 0.12)",
+    borderColor: colors.border,
   },
   sectionTitle: {
-    color: "#f8fafc",
+    color: colors.text,
     fontSize: 18,
     fontWeight: "800",
     marginBottom: 12,
   },
   sectionText: {
-    color: "#cbd5e1",
+    color: colors.textMuted,
     lineHeight: 22,
   },
   infoCard: {
-    backgroundColor: "#132033",
+    backgroundColor: colors.surfaceAlt,
     borderRadius: 18,
     padding: 14,
   },
@@ -314,14 +451,14 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   fieldLabel: {
-    color: "#94a3b8",
+    color: colors.textSubtle,
     fontSize: 12,
     textTransform: "uppercase",
     letterSpacing: 0.8,
     marginBottom: 4,
   },
   fieldValue: {
-    color: "#f8fafc",
+    color: colors.text,
     fontSize: 15,
     lineHeight: 20,
   },
@@ -330,7 +467,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   primaryButton: {
-    backgroundColor: "#f59e0b",
+    backgroundColor: colors.primary,
     borderRadius: 18,
     paddingVertical: 16,
     alignItems: "center",
@@ -338,20 +475,23 @@ const styles = StyleSheet.create({
   primaryButtonWide: {
     width: "100%",
   },
+  primaryButtonDisabled: {
+    opacity: 0.5,
+  },
   primaryButtonText: {
-    color: "#111827",
+    color: colors.primaryText,
     fontWeight: "900",
   },
   secondaryButton: {
-    backgroundColor: "#132033",
+    backgroundColor: colors.surfaceAlt,
     borderRadius: 18,
     paddingVertical: 16,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "rgba(148, 163, 184, 0.16)",
+    borderColor: colors.border,
   },
   secondaryButtonText: {
-    color: "#f8fafc",
+    color: colors.text,
     fontWeight: "800",
   },
 });

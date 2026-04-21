@@ -1,12 +1,18 @@
 import { useAuth, useSignUp, useSSO } from "@clerk/clerk-expo";
 import * as Linking from "expo-linking";
 import { Redirect } from "expo-router";
-import { useRouter } from "expo-router";
+import { usePathname, useRouter } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
+import { ThemeToggleButton } from "@/components/theme/ThemeToggleButton";
+import { BottomNavBar } from "@/components/navigation/BottomNavBar";
+import { useTheme } from "@/context/ThemeContext";
+
 export default function SignUpScreen() {
   const { isSignedIn } = useAuth();
+  const pathname = usePathname();
+  const { colors } = useTheme();
   const { isLoaded, signUp, setActive } = useSignUp();
   const { startSSOFlow } = useSSO();
   const router = useRouter();
@@ -104,8 +110,11 @@ export default function SignUpScreen() {
     return <Redirect href="/" />;
   }
 
+  const styles = createStyles(colors);
+
   return (
     <View style={styles.container}>
+      <ThemeToggleButton />
       <Text style={styles.title}>Create account</Text>
 
       {!isVerifying ? (
@@ -113,6 +122,7 @@ export default function SignUpScreen() {
           <TextInput
             style={styles.input}
             placeholder="Email"
+            placeholderTextColor={colors.textSubtle}
             autoCapitalize="none"
             keyboardType="email-address"
             value={emailAddress}
@@ -121,6 +131,7 @@ export default function SignUpScreen() {
           <TextInput
             style={styles.input}
             placeholder="Password"
+            placeholderTextColor={colors.textSubtle}
             secureTextEntry
             value={password}
             onChangeText={setPassword}
@@ -139,6 +150,7 @@ export default function SignUpScreen() {
           <TextInput
             style={styles.input}
             placeholder="Verification code"
+            placeholderTextColor={colors.textSubtle}
             keyboardType="number-pad"
             value={code}
             onChangeText={setCode}
@@ -154,70 +166,90 @@ export default function SignUpScreen() {
       <Pressable onPress={() => router.push("/sign-in")}>
         <Text style={styles.link}>Already have an account? Sign in</Text>
       </Pressable>
+
+      <BottomNavBar currentPath={pathname} />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    padding: 24,
-    backgroundColor: "#ffffff",
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: "#0f172a",
-    marginBottom: 18,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#cbd5e1",
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 16,
-    marginBottom: 12,
-  },
-  button: {
-    backgroundColor: "#0f172a",
-    borderRadius: 12,
-    alignItems: "center",
-    paddingVertical: 14,
-    marginTop: 4,
-  },
-  buttonText: {
-    color: "#ffffff",
-    fontWeight: "700",
-    fontSize: 16,
-  },
-  helper: {
-    color: "#334155",
-    marginBottom: 8,
-  },
-  secondaryButton: {
-    marginTop: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#cbd5e1",
-    alignItems: "center",
-    paddingVertical: 14,
-    backgroundColor: "#ffffff",
-  },
-  secondaryButtonText: {
-    color: "#0f172a",
-    fontWeight: "700",
-    fontSize: 16,
-  },
-  error: {
-    color: "#b91c1c",
-    marginTop: 10,
-  },
-  link: {
-    marginTop: 16,
-    color: "#0f172a",
-    textAlign: "center",
-    fontWeight: "600",
-  },
-});
+const createStyles = (colors: {
+  background: string;
+  text: string;
+  textMuted: string;
+  textSubtle: string;
+  border: string;
+  primary: string;
+  primaryText: string;
+  surface: string;
+  dangerSoft: string;
+}) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      justifyContent: "center",
+      padding: 24,
+      paddingBottom: 110,
+      backgroundColor: colors.background,
+    },
+    title: {
+      fontSize: 28,
+      fontWeight: "700",
+      color: colors.text,
+      marginBottom: 18,
+      marginTop: 14,
+    },
+    input: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      fontSize: 16,
+      marginBottom: 12,
+      backgroundColor: colors.surface,
+      color: colors.text,
+    },
+    button: {
+      backgroundColor: colors.primary,
+      borderRadius: 12,
+      alignItems: "center",
+      paddingVertical: 14,
+      marginTop: 4,
+    },
+    buttonText: {
+      color: colors.primaryText,
+      fontWeight: "700",
+      fontSize: 16,
+    },
+    helper: {
+      color: colors.textMuted,
+      marginBottom: 8,
+    },
+    secondaryButton: {
+      marginTop: 10,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: "center",
+      paddingVertical: 14,
+      backgroundColor: colors.surface,
+    },
+    secondaryButtonText: {
+      color: colors.text,
+      fontWeight: "700",
+      fontSize: 16,
+    },
+    error: {
+      color: "#b91c1c",
+      marginTop: 10,
+      backgroundColor: colors.dangerSoft,
+      padding: 8,
+      borderRadius: 8,
+    },
+    link: {
+      marginTop: 16,
+      color: colors.text,
+      textAlign: "center",
+      fontWeight: "600",
+    },
+  });

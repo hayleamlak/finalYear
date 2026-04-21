@@ -59,3 +59,8 @@ export type ProductDetailsResponse = {
   success: boolean;
   data: ProductDetails;
 };
+
+export type CartItem = {
+  product: ProductSummary;
+  quantity: number;
+};
