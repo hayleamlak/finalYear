@@ -3,7 +3,7 @@ services:
     name: fyp-backend
     runtime: node
     rootDir: backend
-    buildCommand: npm ci && npm run prisma:generate && npm run build
+    buildCommand: npm ci --include=dev && npm run prisma:generate && npm run build
     startCommand: npm start
     healthCheckPath: /api/v1/health
     envVars:
