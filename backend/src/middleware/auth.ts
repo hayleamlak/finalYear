@@ -29,6 +29,20 @@ function extractRole(payload: Record<string, unknown>): string {
   return "BUYER";
 }
 
+function extractEmail(payload: Record<string, unknown>): string | undefined {
+  const directEmail = payload.email;
+  if (typeof directEmail === "string" && directEmail.length > 0) {
+    return directEmail;
+  }
+
+  const emailAddress = payload.email_address;
+  if (typeof emailAddress === "string" && emailAddress.length > 0) {
+    return emailAddress;
+  }
+
+  return undefined;
+}
+
 export async function requireAuth(req: Request, _res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
 
@@ -51,6 +65,7 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
     req.user = {
       userId,
       role: extractRole(payload as Record<string, unknown>),
+      email: extractEmail(payload as Record<string, unknown>),
     };
 
     next();

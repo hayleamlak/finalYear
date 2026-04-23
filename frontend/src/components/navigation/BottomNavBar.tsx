@@ -1,6 +1,8 @@
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
 
 type BottomNavBarProps = {
@@ -12,8 +14,8 @@ function normalizePath(path: string) {
     return "/products";
   }
 
-  if (path === "/sign-up") {
-    return "/sign-in";
+  if (path === "/sign-up" || path === "/sign-in" || path === "/orders" || path === "/profile") {
+    return "/account";
   }
 
   return path;
@@ -22,6 +24,7 @@ function normalizePath(path: string) {
 export function BottomNavBar({ currentPath }: BottomNavBarProps) {
   const router = useRouter();
   const { colors } = useTheme();
+  const { t } = useLanguage();
   const activePath = normalizePath(currentPath);
 
   const styles = createStyles(colors);
@@ -30,13 +33,28 @@ export function BottomNavBar({ currentPath }: BottomNavBarProps) {
     <View style={styles.wrapper}>
       <View style={styles.inner}>
         <Pressable style={styles.item} onPress={() => router.push("/products") }>
-          <Text style={[styles.label, activePath === "/products" && styles.labelActive]}>Products</Text>
+          <MaterialCommunityIcons
+            name="storefront-outline"
+            size={20}
+            color={activePath === "/products" ? colors.accent : colors.textSubtle}
+          />
+          <Text style={[styles.label, activePath === "/products" && styles.labelActive]}>{t("nav.products")}</Text>
         </Pressable>
         <Pressable style={styles.item} onPress={() => router.push("/cart") }>
-          <Text style={[styles.label, activePath === "/cart" && styles.labelActive]}>Cart</Text>
+          <MaterialCommunityIcons
+            name="cart-outline"
+            size={20}
+            color={activePath === "/cart" ? colors.accent : colors.textSubtle}
+          />
+          <Text style={[styles.label, activePath === "/cart" && styles.labelActive]}>{t("nav.cart")}</Text>
         </Pressable>
-        <Pressable style={styles.item} onPress={() => router.push("/sign-in") }>
-          <Text style={[styles.label, activePath === "/sign-in" && styles.labelActive]}>Account</Text>
+        <Pressable style={styles.item} onPress={() => router.push("/account") }>
+          <MaterialCommunityIcons
+            name="account-circle-outline"
+            size={20}
+            color={activePath === "/account" ? colors.accent : colors.textSubtle}
+          />
+          <Text style={[styles.label, activePath === "/account" && styles.labelActive]}>{t("nav.account")}</Text>
         </Pressable>
       </View>
     </View>
@@ -82,6 +100,8 @@ const createStyles = (colors: {
       paddingVertical: 12,
       paddingHorizontal: 8,
       borderRadius: 12,
+      alignItems: "center",
+      gap: 4,
     },
     label: {
       color: colors.textSubtle,

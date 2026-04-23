@@ -1,21 +1,25 @@
-import { useAuth, useSignUp, useSSO } from "@clerk/clerk-expo";
+import { useAuth, useSignUp, useSSO, useUser } from "@clerk/clerk-expo";
 import * as Linking from "expo-linking";
 import { Redirect } from "expo-router";
 import { usePathname, useRouter } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
+import { RolePicker } from "@/components/auth/RolePicker";
 import { ThemeToggleButton } from "@/components/theme/ThemeToggleButton";
 import { BottomNavBar } from "@/components/navigation/BottomNavBar";
 import { useTheme } from "@/context/ThemeContext";
+import { AppRole, dashboardForRole } from "@/lib/role";
 
 export default function SignUpScreen() {
   const { isSignedIn } = useAuth();
+  const { user } = useUser();
   const pathname = usePathname();
   const { colors } = useTheme();
   const { isLoaded, signUp, setActive } = useSignUp();
   const { startSSOFlow } = useSSO();
   const router = useRouter();
+  const [selectedRole, setSelectedRole] = useState<AppRole>("buyer");
   const [emailAddress, setEmailAddress] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
@@ -40,6 +44,9 @@ export default function SignUpScreen() {
       await signUp.create({
         emailAddress: emailAddress.trim(),
         password,
+        unsafeMetadata: {
+          role: selectedRole,
+        },
       });
 
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
@@ -67,7 +74,16 @@ export default function SignUpScreen() {
 
       if (createdSessionId && setActiveFromSSO) {
         await setActiveFromSSO({ session: createdSessionId });
-        router.replace("/");
+        if (user) {
+          await user.update({
+            unsafeMetadata: {
+              ...(user.unsafeMetadata ?? {}),
+              role: selectedRole,
+            },
+          });
+        }
+
+        router.replace(dashboardForRole(selectedRole));
         return;
       }
 
@@ -94,7 +110,7 @@ export default function SignUpScreen() {
 
       if (result.status === "complete") {
         await setActive({ session: result.createdSessionId });
-        router.replace("/");
+        router.replace(dashboardForRole(selectedRole));
         return;
       }
 
@@ -119,6 +135,7 @@ export default function SignUpScreen() {
 
       {!isVerifying ? (
         <>
+          <RolePicker value={selectedRole} onChange={setSelectedRole} colors={colors} />
           <TextInput
             style={styles.input}
             placeholder="Email"

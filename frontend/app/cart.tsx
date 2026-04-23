@@ -1,17 +1,28 @@
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { usePathname, useRouter } from "expo-router";
 import { FlatList, Image, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
 
+import { LanguageSwitcher } from "@/components/language/LanguageSwitcher";
 import { ThemeToggleButton } from "@/components/theme/ThemeToggleButton";
 import { BottomNavBar } from "@/components/navigation/BottomNavBar";
 import { useCart } from "@/context/CartContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
 
-const formatPrice = (value: number) => new Intl.NumberFormat("en-ET", { style: "currency", currency: "ETB" }).format(value);
+const CURRENCY_LOCALE_MAP = {
+  en: "en-ET",
+  am: "am-ET",
+  om: "en-ET",
+} as const;
+
+const formatPrice = (value: number, locale: "en" | "am" | "om") =>
+  new Intl.NumberFormat(CURRENCY_LOCALE_MAP[locale], { style: "currency", currency: "ETB" }).format(value);
 
 export default function CartScreen() {
   const router = useRouter();
   const pathname = usePathname();
   const { colors } = useTheme();
+  const { locale, t, getCountLabel } = useLanguage();
   const { items, itemCount, subtotal, updateQuantity, removeItem, clearCart } = useCart();
   const styles = createStyles(colors);
 
@@ -20,23 +31,29 @@ export default function CartScreen() {
       <View style={styles.container}>
         <View style={styles.headerRow}>
           <Pressable style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backButtonText}>Back</Text>
+            <MaterialCommunityIcons name="arrow-left" size={18} color={colors.text} />
+            <Text style={styles.backButtonText}>{t("cart.back")}</Text>
           </Pressable>
-          <Text style={styles.title}>My cart</Text>
+          <View style={styles.titleWrap}>
+            <MaterialCommunityIcons name="cart-outline" size={22} color={colors.text} />
+            <Text style={styles.title}>{t("cart.title")}</Text>
+          </View>
           <View style={styles.countPill}>
-            <Text style={styles.countPillText}>{itemCount} items</Text>
+            <Text style={styles.countPillText}>{getCountLabel(itemCount)}</Text>
           </View>
         </View>
         <View style={styles.toggleRow}>
           <ThemeToggleButton />
         </View>
+        <LanguageSwitcher />
 
         {items.length === 0 ? (
           <View style={styles.emptyCard}>
-            <Text style={styles.emptyTitle}>Your cart is empty</Text>
-            <Text style={styles.emptyText}>Browse products and tap Add to cart.</Text>
+            <Text style={styles.emptyTitle}>{t("cart.emptyTitle")}</Text>
+            <Text style={styles.emptyText}>{t("cart.emptyText")}</Text>
             <Pressable style={styles.primaryButton} onPress={() => router.push("/products") }>
-              <Text style={styles.primaryButtonText}>Browse products</Text>
+              <MaterialCommunityIcons name="storefront-outline" size={18} color={colors.primaryText} />
+              <Text style={styles.primaryButtonText}>{t("cart.browseProducts")}</Text>
             </Pressable>
           </View>
         ) : (
@@ -53,15 +70,15 @@ export default function CartScreen() {
                     <Text style={styles.productName} numberOfLines={1}>
                       {item.product.product_name}
                     </Text>
-                    <Text style={styles.productPrice}>{formatPrice(item.product.price)}</Text>
-                    <Text style={styles.productMeta}>Stock: {item.product.stock}</Text>
+                    <Text style={styles.productPrice}>{formatPrice(item.product.price, locale)}</Text>
+                    <Text style={styles.productMeta}>{t("cart.stock")}: {item.product.stock}</Text>
 
                     <View style={styles.controlsRow}>
                       <Pressable
                         style={styles.qtyButton}
                         onPress={() => updateQuantity(item.product.id, item.quantity - 1)}
                       >
-                        <Text style={styles.qtyButtonText}>-</Text>
+                        <MaterialCommunityIcons name="minus" size={18} color={colors.text} />
                       </Pressable>
                       <Text style={styles.qtyValue}>{item.quantity}</Text>
                       <Pressable
@@ -69,11 +86,12 @@ export default function CartScreen() {
                         onPress={() => updateQuantity(item.product.id, item.quantity + 1)}
                         disabled={item.quantity >= item.product.stock}
                       >
-                        <Text style={styles.qtyButtonText}>+</Text>
+                        <MaterialCommunityIcons name="plus" size={18} color={colors.text} />
                       </Pressable>
 
                       <Pressable style={styles.removeButton} onPress={() => removeItem(item.product.id)}>
-                        <Text style={styles.removeButtonText}>Remove</Text>
+                        <MaterialCommunityIcons name="trash-can-outline" size={14} color="#fca5a5" />
+                        <Text style={styles.removeButtonText}>{t("cart.remove")}</Text>
                       </Pressable>
                     </View>
                   </View>
@@ -83,15 +101,23 @@ export default function CartScreen() {
 
             <View style={styles.summaryCard}>
               <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Subtotal</Text>
-                <Text style={styles.summaryValue}>{formatPrice(subtotal)}</Text>
+                <Text style={styles.summaryLabel}>{t("cart.subtotal")}</Text>
+                <Text style={styles.summaryValue}>{formatPrice(subtotal, locale)}</Text>
               </View>
 
-              <Pressable style={styles.primaryButton} onPress={() => router.push("/products") }>
-                <Text style={styles.primaryButtonText}>Continue shopping</Text>
+              <Pressable style={styles.primaryButton} onPress={() => router.push("/checkout") }>
+                <MaterialCommunityIcons name="credit-card-outline" size={18} color={colors.primaryText} />
+                <Text style={styles.primaryButtonText}>{t("cart.checkout")}</Text>
               </Pressable>
-              <Pressable style={styles.secondaryButton} onPress={clearCart}>
-                <Text style={styles.secondaryButtonText}>Clear cart</Text>
+
+              <Pressable style={styles.secondaryButton} onPress={() => router.push("/products") }>
+                <MaterialCommunityIcons name="shopping-outline" size={18} color={colors.text} />
+                <Text style={styles.secondaryButtonText}>{t("cart.continueShopping")}</Text>
+              </Pressable>
+
+              <Pressable style={styles.ghostButton} onPress={clearCart}>
+                <MaterialCommunityIcons name="cart-remove" size={18} color={colors.textSubtle} />
+                <Text style={styles.ghostButtonText}>{t("cart.clearCart")}</Text>
               </Pressable>
             </View>
           </>
@@ -139,6 +165,9 @@ const createStyles = (colors: {
     borderColor: colors.border,
     paddingHorizontal: 12,
     paddingVertical: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
   backButtonText: {
     color: colors.text,
@@ -151,6 +180,11 @@ const createStyles = (colors: {
     color: colors.text,
     fontSize: 24,
     fontWeight: "900",
+  },
+  titleWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
   countPill: {
     backgroundColor: colors.accentSoft,
@@ -248,6 +282,9 @@ const createStyles = (colors: {
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 6,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
   },
   removeButtonText: {
     color: "#fca5a5",
@@ -284,6 +321,9 @@ const createStyles = (colors: {
     borderRadius: 12,
     alignItems: "center",
     paddingVertical: 12,
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 8,
   },
   primaryButtonText: {
     color: colors.primaryText,
@@ -296,9 +336,23 @@ const createStyles = (colors: {
     borderColor: colors.border,
     alignItems: "center",
     paddingVertical: 12,
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 8,
   },
   secondaryButtonText: {
     color: colors.text,
     fontWeight: "800",
+  },
+  ghostButton: {
+    alignItems: "center",
+    paddingVertical: 10,
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 8,
+  },
+  ghostButtonText: {
+    color: colors.textSubtle,
+    fontWeight: "700",
   },
 });

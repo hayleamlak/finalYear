@@ -7,6 +7,7 @@ import {
   Pressable,
   ScrollView,
   SafeAreaView,
+  Share,
   StyleSheet,
   Text,
   View,
@@ -115,6 +116,44 @@ export default function ProductDetailsScreen() {
     });
 
     Alert.alert("Added to cart", `${product.product_name} was added to your cart.`);
+  };
+
+  const onBuyNow = () => {
+    if (!product) {
+      return;
+    }
+
+    if (product.stock <= 0) {
+      Alert.alert("Out of stock", "This product is currently unavailable.");
+      return;
+    }
+
+    addItem({
+      id: product.id,
+      product_name: product.product_name,
+      price: product.price,
+      stock: product.stock,
+      image: product.image,
+      product_detail: product.product_detail,
+      farmer_id: product.farmer_id,
+      createdAt: product.createdAt,
+    });
+
+    router.push("/cart");
+  };
+
+  const onShareProduct = async () => {
+    if (!product) {
+      return;
+    }
+
+    try {
+      await Share.share({
+        message: `${product.product_name} - ${formatPrice(product.price)}\n${description}`,
+      });
+    } catch {
+      Alert.alert("Share failed", "Unable to share this product right now.");
+    }
   };
 
   const styles = createStyles(colors);
@@ -265,18 +304,33 @@ export default function ProductDetailsScreen() {
             </View>
 
             <View style={styles.actionRow}>
-              <Pressable
-                style={[styles.primaryButton, product.stock <= 0 && styles.primaryButtonDisabled]}
-                onPress={onAddToCart}
-                disabled={product.stock <= 0}
-              >
-                <Text style={styles.primaryButtonText}>
-                  {product.stock <= 0 ? "Out of stock" : `Add to cart${quantityInCart > 0 ? ` (${quantityInCart})` : ""}`}
-                </Text>
-              </Pressable>
-              <Pressable style={styles.secondaryButton} onPress={() => router.push("/cart") }>
-                <Text style={styles.secondaryButtonText}>View cart</Text>
-              </Pressable>
+              <View style={styles.inlineActionsRow}>
+                <Pressable
+                  style={[styles.primaryButton, styles.inlineActionButton, product.stock <= 0 && styles.primaryButtonDisabled]}
+                  onPress={onAddToCart}
+                  disabled={product.stock <= 0}
+                >
+                  <Text style={styles.primaryButtonText}>
+                    {product.stock <= 0 ? "Out of stock" : `Add to cart${quantityInCart > 0 ? ` (${quantityInCart})` : ""}`}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.secondaryButton, styles.inlineActionButton, product.stock <= 0 && styles.primaryButtonDisabled]}
+                  onPress={onBuyNow}
+                  disabled={product.stock <= 0}
+                >
+                  <Text style={styles.secondaryButtonText}>Buy now</Text>
+                </Pressable>
+              </View>
+
+              <View style={styles.inlineActionsRow}>
+                <Pressable style={[styles.secondaryButton, styles.inlineActionButton]} onPress={() => router.push("/cart") }>
+                  <Text style={styles.secondaryButtonText}>View cart</Text>
+                </Pressable>
+                <Pressable style={[styles.secondaryButton, styles.inlineActionButton]} onPress={() => void onShareProduct()}>
+                  <Text style={styles.secondaryButtonText}>Share product</Text>
+                </Pressable>
+              </View>
             </View>
           </>
         ) : null}
@@ -465,6 +519,13 @@ const createStyles = (colors: {
   actionRow: {
     marginTop: 18,
     gap: 12,
+  },
+  inlineActionsRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  inlineActionButton: {
+    flex: 1,
   },
   primaryButton: {
     backgroundColor: colors.primary,
