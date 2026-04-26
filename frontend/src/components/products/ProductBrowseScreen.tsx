@@ -1,6 +1,6 @@
 import { useAuth } from "@clerk/clerk-expo";
 import { usePathname, useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -14,7 +14,6 @@ import {
   View,
 } from "react-native";
 
-import { ThemeToggleButton } from "@/components/theme/ThemeToggleButton";
 import { BottomNavBar } from "@/components/navigation/BottomNavBar";
 import { useTheme } from "@/context/ThemeContext";
 import { apiFetch } from "@/lib/api";
@@ -40,13 +39,20 @@ export function ProductBrowseScreen() {
   const router = useRouter();
   const pathname = usePathname();
   const { colors } = useTheme();
-  const { isSignedIn, signOut } = useAuth();
-  const { itemCount } = useCart();
+  const { isSignedIn } = useAuth();
+  const { itemCount, addItem, getQuantityForProduct } = useCart();
   const [items, setItems] = useState<ProductSummary[]>([]);
+  const [visibleItemIds, setVisibleItemIds] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60 });
+  const onViewableItemsChanged = useRef(
+    ({ viewableItems }: { viewableItems: { item: ProductSummary }[] }) => {
+      setVisibleItemIds(viewableItems.map((entry) => entry.item.id));
+    }
+  );
 
   const subtitle = useMemo(() => {
     if (isSignedIn) {
@@ -85,6 +91,11 @@ export function ProductBrowseScreen() {
     void loadProducts("");
   }, []);
 
+  useEffect(() => {
+    // Keep above-the-fold images visible after returning from other tabs.
+    setVisibleItemIds(items.slice(0, 6).map((item) => item.id));
+  }, [items]);
+
   const onSubmitSearch = () => {
     void loadProducts(search);
   };
@@ -97,6 +108,12 @@ export function ProductBrowseScreen() {
         data={items}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.content}
+        initialNumToRender={6}
+        maxToRenderPerBatch={6}
+        windowSize={7}
+        removeClippedSubviews={false}
+        viewabilityConfig={viewabilityConfig.current}
+        onViewableItemsChanged={onViewableItemsChanged.current}
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => void loadProducts(search, true)} tintColor="#f59e0b" />}
         ListHeaderComponent={
           <View>
@@ -105,7 +122,6 @@ export function ProductBrowseScreen() {
                 <View style={styles.badge}>
                   <Text style={styles.badgeText}>Market</Text>
                 </View>
-                <ThemeToggleButton />
               </View>
               <Text style={styles.title}>Fresh coffee, ready to browse</Text>
               <Text style={styles.subtitle}>{subtitle}</Text>
@@ -170,35 +186,59 @@ export function ProductBrowseScreen() {
           )
         }
         renderItem={({ item }) => (
-          <Pressable
-            style={styles.card}
-            onPress={() => router.push({ pathname: "/product/[productId]", params: { productId: item.id } })}
-          >
-            <Image source={{ uri: item.image }} style={styles.cardImage} />
+          <View style={styles.card}>
+            <Pressable onPress={() => router.push({ pathname: "/product/[productId]", params: { productId: item.id } })}>
+              {visibleItemIds.includes(item.id) ? (
+                <Image source={{ uri: item.image }} style={styles.cardImage} />
+              ) : (
+                <View style={styles.cardImagePlaceholder}>
+                  <ActivityIndicator color="#f59e0b" />
+                  <Text style={styles.cardImagePlaceholderText}>Loading image...</Text>
+                </View>
+              )}
+            </Pressable>
             <View style={styles.cardBody}>
-              <View style={styles.cardTopRow}>
-                <Text style={styles.cardTitle} numberOfLines={1}>
-                  {item.product_name}
+              <Pressable onPress={() => router.push({ pathname: "/product/[productId]", params: { productId: item.id } })}>
+                <View style={styles.cardTopRow}>
+                  <Text style={styles.cardTitle} numberOfLines={1}>
+                    {item.product_name}
+                  </Text>
+                  <Text style={styles.cardPrice}>{formatPrice(item.price)}</Text>
+                </View>
+                <Text style={styles.cardDescription} numberOfLines={2}>
+                  {item.product_detail ?? "Fresh product from a local farmer."}
                 </Text>
-                <Text style={styles.cardPrice}>{formatPrice(item.price)}</Text>
-              </View>
-              <Text style={styles.cardDescription} numberOfLines={2}>
-                {item.product_detail ?? "Fresh product from a local farmer."}
-              </Text>
-              <View style={styles.cardFooter}>
-                <Text style={styles.cardMeta}>{getStockLabel(item.stock)}</Text>
-                <Text style={styles.cardMeta}>{item.stock} in stock</Text>
+                <View style={styles.cardFooter}>
+                  <Text style={styles.cardMeta}>{getStockLabel(item.stock)}</Text>
+                  <Text style={styles.cardMeta}>{item.stock} in stock</Text>
+                </View>
+              </Pressable>
+
+              <View style={styles.actionRow}>
+                <Pressable
+                  style={styles.viewButton}
+                  onPress={() => router.push({ pathname: "/product/[productId]", params: { productId: item.id } })}
+                >
+                  <Text style={styles.viewButtonText}>View</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.cartButton, item.stock <= 0 && styles.cartButtonDisabled]}
+                  onPress={() => addItem(item, 1)}
+                  disabled={item.stock <= 0}
+                >
+                  <Text style={styles.cartButtonText}>
+                    {item.stock <= 0
+                      ? "Out of stock"
+                      : `Add to cart${getQuantityForProduct(item.id) > 0 ? ` (${getQuantityForProduct(item.id)})` : ""}`}
+                  </Text>
+                </Pressable>
               </View>
             </View>
-          </Pressable>
+          </View>
         )}
         ListFooterComponent={
           <View style={styles.footer}>
-            {isSignedIn ? (
-              <Pressable style={styles.signOutButton} onPress={() => void signOut()}>
-                <Text style={styles.signOutButtonText}>Sign out</Text>
-              </Pressable>
-            ) : (
+            {!isSignedIn ? (
               <View style={styles.footerActions}>
                 <Pressable style={styles.primaryFooterButton} onPress={() => router.push("/sign-in") }>
                   <Text style={styles.primaryFooterButtonText}>Sign in</Text>
@@ -207,7 +247,7 @@ export function ProductBrowseScreen() {
                   <Text style={styles.secondaryFooterButtonText}>Create account</Text>
                 </Pressable>
               </View>
-            )}
+            ) : null}
           </View>
         }
       />
@@ -415,8 +455,60 @@ const createStyles = (colors: {
       height: 200,
       backgroundColor: colors.surfaceAlt,
     },
+    cardImagePlaceholder: {
+      width: "100%",
+      height: 200,
+      backgroundColor: colors.surfaceAlt,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 10,
+    },
+    cardImagePlaceholderText: {
+      color: colors.textSubtle,
+      fontSize: 12,
+      fontWeight: "600",
+    },
     cardBody: {
       padding: 16,
+    },
+    actionRow: {
+      flexDirection: "row",
+      gap: 10,
+      marginTop: 12,
+      minHeight: 42,
+      alignItems: "stretch",
+    },
+    viewButton: {
+      flex: 1,
+      backgroundColor: colors.surfaceAlt,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      minHeight: 42,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    viewButtonText: {
+      color: colors.text,
+      fontWeight: "800",
+      fontSize: 12,
+    },
+    cartButton: {
+      flex: 1,
+      backgroundColor: colors.primary,
+      borderRadius: 12,
+      minHeight: 42,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: 10,
+    },
+    cartButtonDisabled: {
+      opacity: 0.6,
+    },
+    cartButtonText: {
+      color: colors.primaryText,
+      fontWeight: "800",
+      fontSize: 12,
     },
     cardTopRow: {
       flexDirection: "row",
@@ -479,18 +571,6 @@ const createStyles = (colors: {
       borderColor: colors.border,
     },
     secondaryFooterButtonText: {
-      color: colors.text,
-      fontWeight: "800",
-    },
-    signOutButton: {
-      backgroundColor: colors.surfaceAlt,
-      borderRadius: 16,
-      paddingVertical: 14,
-      alignItems: "center",
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    signOutButtonText: {
       color: colors.text,
       fontWeight: "800",
     },

@@ -6,7 +6,6 @@ import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { RolePicker } from "@/components/auth/RolePicker";
-import { ThemeToggleButton } from "@/components/theme/ThemeToggleButton";
 import { BottomNavBar } from "@/components/navigation/BottomNavBar";
 import { useTheme } from "@/context/ThemeContext";
 import { AppRole, dashboardForRole } from "@/lib/role";
@@ -130,7 +129,6 @@ export default function SignUpScreen() {
 
   return (
     <View style={styles.container}>
-      <ThemeToggleButton />
       <Text style={styles.title}>Create account</Text>
 
       {!isVerifying ? (

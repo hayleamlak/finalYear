@@ -6,7 +6,6 @@ import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { RolePicker } from "@/components/auth/RolePicker";
-import { ThemeToggleButton } from "@/components/theme/ThemeToggleButton";
 import { BottomNavBar } from "@/components/navigation/BottomNavBar";
 import { useTheme } from "@/context/ThemeContext";
 import { AppRole, dashboardForRole, getRoleFromUser } from "@/lib/role";
@@ -114,7 +113,6 @@ export default function SignInScreen() {
 
   return (
     <View style={styles.container}>
-      <ThemeToggleButton />
       <Text style={styles.title}>Sign in</Text>
       <RolePicker value={selectedRole} onChange={setSelectedRole} colors={colors} />
       <TextInput

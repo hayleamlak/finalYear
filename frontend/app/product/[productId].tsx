@@ -13,7 +13,6 @@ import {
   View,
 } from "react-native";
 
-import { ThemeToggleButton } from "@/components/theme/ThemeToggleButton";
 import { BottomNavBar } from "@/components/navigation/BottomNavBar";
 import { apiFetch } from "@/lib/api";
 import { useCart } from "@/context/CartContext";
@@ -165,7 +164,6 @@ export default function ProductDetailsScreen() {
           <Pressable style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>Back</Text>
           </Pressable>
-          <ThemeToggleButton />
         </View>
 
         {isLoading ? (

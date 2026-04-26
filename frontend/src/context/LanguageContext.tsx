@@ -11,6 +11,7 @@ type TranslationKey =
   | "account.subtitle"
   | "account.guest"
   | "account.signIn"
+  | "account.editProfile"
   | "account.orders"
   | "account.profile"
   | "account.language"
@@ -48,6 +49,7 @@ const MESSAGES: Record<Locale, Record<TranslationKey, string>> = {
     "account.subtitle": "Manage your orders, profile, language, and app settings.",
     "account.guest": "You are not signed in",
     "account.signIn": "Sign in",
+    "account.editProfile": "Edit Profile",
     "account.orders": "Orders",
     "account.profile": "Profile",
     "account.language": "Language",
@@ -84,6 +86,7 @@ const MESSAGES: Record<Locale, Record<TranslationKey, string>> = {
     "account.subtitle": "ትዕዛዞችን፣ ፕሮፋይልን፣ ቋንቋን እና የመተግበሪያ ቅንብሮችን ያስተዳድሩ።",
     "account.guest": "አልገቡም",
     "account.signIn": "ግባ",
+    "account.editProfile": "ፕሮፋይልን አስተካክል",
     "account.orders": "ትዕዛዞች",
     "account.profile": "ፕሮፋይል",
     "account.language": "ቋንቋ",
@@ -120,6 +123,7 @@ const MESSAGES: Record<Locale, Record<TranslationKey, string>> = {
     "account.subtitle": "Ajaja, piroofaayilii, afaanii fi qindaa'ina appii to'achiisi.",
     "account.guest": "Hin seeniin",
     "account.signIn": "Seeni",
+    "account.editProfile": "Piroofaayilii gulaali",
     "account.orders": "Ajajoota",
     "account.profile": "Piroofaayilii",
     "account.language": "Afaan",

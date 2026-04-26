@@ -66,22 +66,9 @@ export default function ProductsPage({
 
   const filteredProducts = useMemo(() => {
     const cleaned = searchTerm.trim().toLowerCase();
-  
+
     return products.filter((product) => {
-      // excludING if farmer is INACTIVE
-      if (product.farmer?.status === "INACTIVE") return false;
-
-      // EXCLUDING IF PRODOCT STATUS IS INACTIVE
-      if(product.status === "INACTIVE") return false;
-      if(product.status === "PAUSED") return false;
-
-  
-      //  excludeING out of stock 
-      if (product.stock === 0) return false;
-  
-      // search filter
       if (!cleaned) return true;
-  
       return product.product_name.toLowerCase().includes(cleaned);
     });
   }, [searchTerm, products]);
@@ -237,7 +224,6 @@ export default function ProductsPage({
       {/* PRODUCT GRID */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
         {filteredProducts.map((product) => (
-            product.stock > 0 && (
               <motion.div
               key={product.id}
               initial={{ opacity: 0, y: 30 }}
@@ -330,7 +316,7 @@ export default function ProductsPage({
                         loadingId === product.id || product.stock === 0
                       }
                     >
-                      {loadingId === product.id ? "loading..." : tb("add")}
+                      {loadingId === product.id ? "loading..." : product.stock === 0 ? "Out of Stock" : tb("add")}
                     </Button>
                     <LoaderBtn
                       btnName={tb("detail")}
@@ -341,7 +327,6 @@ export default function ProductsPage({
                         hover:bg-green-700
                         dark:bg-green-700 dark:hover:bg-green-800
                       "
-                      disable={product.stock === 0}
                     />
   
                     {/* <Button onClick={()=>speak(product.product_detail || "")}><Volume2 /></Button> */}
@@ -352,7 +337,6 @@ export default function ProductsPage({
   
               </Card>
             </motion.div>
-            )
         ))}
       </div>
     </div>

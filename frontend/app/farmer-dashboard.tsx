@@ -4,7 +4,6 @@ import { Redirect, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
-import { ThemeToggleButton } from "@/components/theme/ThemeToggleButton";
 import { useTheme } from "@/context/ThemeContext";
 import { apiFetch } from "@/lib/api";
 import { getRoleFromUser, toBackendRole } from "@/lib/role";
@@ -144,7 +143,6 @@ export default function FarmerDashboardScreen() {
             <Text style={styles.title}>Farmer Dashboard</Text>
             <Text style={styles.subtitle}>Manage your products and track your inventory.</Text>
           </View>
-          <ThemeToggleButton />
         </View>
 
         <View style={styles.statsRow}>

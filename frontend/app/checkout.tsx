@@ -12,7 +12,6 @@ import {
 } from "react-native";
 
 import { BottomNavBar } from "@/components/navigation/BottomNavBar";
-import { ThemeToggleButton } from "@/components/theme/ThemeToggleButton";
 import { useCart } from "@/context/CartContext";
 import { useTheme } from "@/context/ThemeContext";
 
@@ -82,7 +81,6 @@ export default function CheckoutScreen() {
             <Text style={styles.backButtonText}>Back</Text>
           </Pressable>
           <Text style={styles.title}>Checkout</Text>
-          <ThemeToggleButton />
         </View>
 
         {items.length === 0 ? (

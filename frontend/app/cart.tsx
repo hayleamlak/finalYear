@@ -2,8 +2,6 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { usePathname, useRouter } from "expo-router";
 import { FlatList, Image, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
 
-import { LanguageSwitcher } from "@/components/language/LanguageSwitcher";
-import { ThemeToggleButton } from "@/components/theme/ThemeToggleButton";
 import { BottomNavBar } from "@/components/navigation/BottomNavBar";
 import { useCart } from "@/context/CartContext";
 import { useLanguage } from "@/context/LanguageContext";
@@ -42,10 +40,6 @@ export default function CartScreen() {
             <Text style={styles.countPillText}>{getCountLabel(itemCount)}</Text>
           </View>
         </View>
-        <View style={styles.toggleRow}>
-          <ThemeToggleButton />
-        </View>
-        <LanguageSwitcher />
 
         {items.length === 0 ? (
           <View style={styles.emptyCard}>
@@ -172,9 +166,6 @@ const createStyles = (colors: {
   backButtonText: {
     color: colors.text,
     fontWeight: "700",
-  },
-  toggleRow: {
-    marginTop: 10,
   },
   title: {
     color: colors.text,

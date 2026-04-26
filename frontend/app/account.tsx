@@ -1,7 +1,7 @@
 import { useAuth, useClerk, useUser } from "@clerk/clerk-expo";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { usePathname, useRouter } from "expo-router";
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { LanguageSwitcher } from "@/components/language/LanguageSwitcher";
 import { BottomNavBar } from "@/components/navigation/BottomNavBar";
@@ -32,10 +32,14 @@ export default function AccountScreen() {
           </View>
         </View>
 
-        <View style={styles.card}>
+        <View style={styles.profileCard}>
           <View style={styles.userRow}>
             <View style={styles.avatar}>
-              <MaterialCommunityIcons name="account-outline" size={20} color={colors.accent} />
+              {isSignedIn && user?.imageUrl ? (
+                <Image source={{ uri: user.imageUrl }} style={styles.avatarImage} />
+              ) : (
+                <MaterialCommunityIcons name="account-outline" size={26} color={colors.accent} />
+              )}
             </View>
             <View style={styles.userMeta}>
               <Text style={styles.userName}>{isSignedIn ? displayName : t("account.guest")}</Text>
@@ -45,15 +49,20 @@ export default function AccountScreen() {
             </View>
           </View>
 
-          {!isSignedIn ? (
+          {isSignedIn ? (
+            <Pressable style={styles.actionButton} onPress={() => router.push("/profile") }>
+              <MaterialCommunityIcons name="account-edit-outline" size={18} color={colors.primaryText} />
+              <Text style={styles.actionButtonText}>{t("account.editProfile")}</Text>
+            </Pressable>
+          ) : (
             <Pressable style={styles.primaryButton} onPress={() => router.push("/sign-in") }>
               <Text style={styles.primaryButtonText}>{t("account.signIn")}</Text>
             </Pressable>
-          ) : null}
+          )}
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>{t("account.title")}</Text>
+          <Text style={styles.sectionTitle}>{t("account.orders")}</Text>
           <Pressable style={styles.menuRow} onPress={() => router.push("/orders") }>
             <View style={styles.menuLeft}>
               <MaterialCommunityIcons name="package-variant-closed" size={18} color={colors.text} />
@@ -61,23 +70,18 @@ export default function AccountScreen() {
             </View>
             <MaterialCommunityIcons name="chevron-right" size={18} color={colors.textSubtle} />
           </Pressable>
-          <Pressable style={styles.menuRow} onPress={() => router.push("/profile") }>
-            <View style={styles.menuLeft}>
-              <MaterialCommunityIcons name="account-edit-outline" size={18} color={colors.text} />
-              <Text style={styles.menuText}>{t("account.profile")}</Text>
-            </View>
-            <MaterialCommunityIcons name="chevron-right" size={18} color={colors.textSubtle} />
-          </Pressable>
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>{t("account.language")}</Text>
-          <LanguageSwitcher />
-          <Text style={styles.helper}>Current: {locale.toUpperCase()}</Text>
         </View>
 
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>{t("account.settings")}</Text>
+          <View style={styles.settingsRow}>
+            <View style={styles.menuLeft}>
+              <MaterialCommunityIcons name="translate" size={18} color={colors.text} />
+              <Text style={styles.menuText}>{t("account.language")}</Text>
+            </View>
+            <LanguageSwitcher />
+          </View>
+          <Text style={styles.helper}>Current: {locale.toUpperCase()}</Text>
           <View style={styles.menuRowNoBorder}>
             <View style={styles.menuLeft}>
               <MaterialCommunityIcons name="theme-light-dark" size={18} color={colors.text} />
@@ -90,14 +94,14 @@ export default function AccountScreen() {
 
         {isSignedIn ? (
           <Pressable
-            style={styles.secondaryButton}
+            style={styles.logoutButton}
             onPress={async () => {
               await signOut();
               router.replace("/sign-in");
             }}
           >
-            <MaterialCommunityIcons name="logout" size={16} color={colors.text} />
-            <Text style={styles.secondaryButtonText}>{t("account.signOut")}</Text>
+            <MaterialCommunityIcons name="logout" size={16} color={colors.primaryText} />
+            <Text style={styles.logoutButtonText}>{t("account.signOut")}</Text>
           </Pressable>
         ) : null}
       </ScrollView>
@@ -149,6 +153,19 @@ const createStyles = (colors: {
       padding: 14,
       gap: 8,
     },
+    profileCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 24,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 16,
+      gap: 14,
+      shadowColor: "#000",
+      shadowOpacity: 0.06,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 6 },
+      elevation: 2,
+    },
     userRow: {
       flexDirection: "row",
       alignItems: "center",
@@ -163,6 +180,11 @@ const createStyles = (colors: {
       backgroundColor: colors.surfaceAlt,
       borderWidth: 1,
       borderColor: colors.border,
+    },
+    avatarImage: {
+      width: "100%",
+      height: "100%",
+      borderRadius: 999,
     },
     userMeta: {
       flex: 1,
@@ -197,6 +219,12 @@ const createStyles = (colors: {
       justifyContent: "space-between",
       gap: 8,
     },
+    settingsRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 12,
+    },
     menuLeft: {
       flexDirection: "row",
       alignItems: "center",
@@ -218,6 +246,32 @@ const createStyles = (colors: {
       paddingVertical: 12,
     },
     primaryButtonText: {
+      color: colors.primaryText,
+      fontWeight: "800",
+    },
+    actionButton: {
+      backgroundColor: colors.primary,
+      borderRadius: 14,
+      alignItems: "center",
+      justifyContent: "center",
+      flexDirection: "row",
+      gap: 8,
+      paddingVertical: 12,
+    },
+    actionButtonText: {
+      color: colors.primaryText,
+      fontWeight: "800",
+    },
+    logoutButton: {
+      borderRadius: 12,
+      paddingVertical: 12,
+      alignItems: "center",
+      justifyContent: "center",
+      flexDirection: "row",
+      gap: 6,
+      backgroundColor: "#b42318",
+    },
+    logoutButtonText: {
       color: colors.primaryText,
       fontWeight: "800",
     },

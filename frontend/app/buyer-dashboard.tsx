@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, FlatList, Image, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
 
 import { BottomNavBar } from "@/components/navigation/BottomNavBar";
-import { ThemeToggleButton } from "@/components/theme/ThemeToggleButton";
 import { useCart } from "@/context/CartContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -62,6 +61,7 @@ export default function BuyerDashboardScreen() {
         data={products}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.container}
+        removeClippedSubviews={false}
         ListHeaderComponent={
           <View style={styles.headerWrap}>
             <View style={styles.headerRow}>
@@ -69,7 +69,6 @@ export default function BuyerDashboardScreen() {
                 <Text style={styles.title}>Buyer Marketplace</Text>
                 <Text style={styles.subtitle}>Farmer uploads appear here in real-time from your product API.</Text>
               </View>
-              <ThemeToggleButton />
             </View>
 
             <View style={styles.infoRow}>
@@ -246,13 +245,17 @@ const createStyles = (colors: {
       flexDirection: "row",
       gap: 8,
       marginTop: 8,
+      minHeight: 40,
+      alignItems: "stretch",
     },
     primaryAction: {
       flex: 1,
       borderRadius: 10,
       backgroundColor: colors.accent,
       alignItems: "center",
+      justifyContent: "center",
       paddingVertical: 10,
+      minHeight: 40,
     },
     primaryActionText: {
       color: "#ffffff",
@@ -266,7 +269,9 @@ const createStyles = (colors: {
       borderColor: colors.border,
       backgroundColor: colors.surfaceAlt,
       alignItems: "center",
+      justifyContent: "center",
       paddingVertical: 10,
+      minHeight: 40,
     },
     secondaryActionText: {
       color: colors.text,
