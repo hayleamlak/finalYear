@@ -17,6 +17,7 @@ import { BottomNavBar } from "@/components/navigation/BottomNavBar";
 import { apiFetch } from "@/lib/api";
 import { useCart } from "@/context/CartContext";
 import { useTheme } from "@/context/ThemeContext";
+import { useToast } from "@/context/ToastContext";
 import { ProductDetailsResponse } from "@/types/product";
 
 const formatPrice = (value: number) => new Intl.NumberFormat("en-ET", { style: "currency", currency: "ETB" }).format(value);
@@ -58,7 +59,8 @@ export default function ProductDetailsScreen() {
   const router = useRouter();
   const pathname = usePathname();
   const { colors } = useTheme();
-  const { addItem, getQuantityForProduct } = useCart();
+  const { showToast } = useToast();
+  const { addItem } = useCart();
   const { productId } = useLocalSearchParams<{ productId?: string | string[] }>();
   const resolvedProductId = useMemo(() => (Array.isArray(productId) ? productId[0] : productId), [productId]);
   const [product, setProduct] = useState<ProductDetailsResponse["data"] | null>(null);
@@ -91,15 +93,17 @@ export default function ProductDetailsScreen() {
 
   const farmerName = product ? `${product.farmer.first_name} ${product.farmer.last_name}` : "";
   const description = product?.product_detail ?? product?.description?.flavorNotes ?? "No description was provided for this product yet.";
-  const quantityInCart = product ? getQuantityForProduct(product.id) : 0;
-
   const onAddToCart = () => {
     if (!product) {
       return;
     }
 
     if (product.stock <= 0) {
-      Alert.alert("Out of stock", "This product is currently unavailable.");
+      showToast({
+        title: "Out of stock",
+        message: "This product is currently unavailable.",
+        variant: "error",
+      });
       return;
     }
 
@@ -114,7 +118,11 @@ export default function ProductDetailsScreen() {
       createdAt: product.createdAt,
     });
 
-    Alert.alert("Added to cart", `${product.product_name} was added to your cart.`);
+    showToast({
+      title: "Added to cart",
+      message: `${product.product_name} was added to your cart.`,
+      variant: "success",
+    });
   };
 
   const onBuyNow = () => {
@@ -309,7 +317,7 @@ export default function ProductDetailsScreen() {
                   disabled={product.stock <= 0}
                 >
                   <Text style={styles.primaryButtonText}>
-                    {product.stock <= 0 ? "Out of stock" : `Add to cart${quantityInCart > 0 ? ` (${quantityInCart})` : ""}`}
+                    {product.stock <= 0 ? "Out of stock" : "Add to cart"}
                   </Text>
                 </Pressable>
                 <Pressable

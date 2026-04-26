@@ -94,16 +94,20 @@ export async function updateMyProfile(req: Request, res: Response) {
     },
   });
 
+  const hasField = <K extends keyof typeof payload>(key: K) =>
+    Object.prototype.hasOwnProperty.call(payload, key);
+
   const normalizedAddress = payload.address === "" ? null : payload.address;
 
   const profile = existing
     ? await prisma.user.update({
         where: { id: req.user.userId },
         data: {
-          first_name: payload.first_name ?? existing.first_name,
-          last_name: payload.last_name ?? existing.last_name,
-          address: normalizedAddress ?? existing.address,
-          language: payload.language ?? existing.language,
+          ...(hasField("first_name") ? { first_name: payload.first_name } : {}),
+          ...(hasField("last_name") ? { last_name: payload.last_name } : {}),
+          ...(hasField("address") ? { address: normalizedAddress ?? null } : {}),
+          ...(hasField("language") ? { language: payload.language } : {}),
+          ...(hasField("email") ? { email: payload.email } : {}),
         },
         select: {
           id: true,

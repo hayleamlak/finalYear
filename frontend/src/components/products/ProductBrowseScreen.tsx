@@ -16,6 +16,7 @@ import {
 
 import { BottomNavBar } from "@/components/navigation/BottomNavBar";
 import { useTheme } from "@/context/ThemeContext";
+import { useToast } from "@/context/ToastContext";
 import { apiFetch } from "@/lib/api";
 import { useCart } from "@/context/CartContext";
 import { ProductListResponse, ProductSummary } from "@/types/product";
@@ -39,8 +40,9 @@ export function ProductBrowseScreen() {
   const router = useRouter();
   const pathname = usePathname();
   const { colors } = useTheme();
+  const { showToast } = useToast();
   const { isSignedIn } = useAuth();
-  const { itemCount, addItem, getQuantityForProduct } = useCart();
+  const { itemCount, addItem } = useCart();
   const [items, setItems] = useState<ProductSummary[]>([]);
   const [visibleItemIds, setVisibleItemIds] = useState<string[]>([]);
   const [search, setSearch] = useState("");
@@ -223,13 +225,20 @@ export function ProductBrowseScreen() {
                 </Pressable>
                 <Pressable
                   style={[styles.cartButton, item.stock <= 0 && styles.cartButtonDisabled]}
-                  onPress={() => addItem(item, 1)}
+                  onPress={() => {
+                    addItem(item, 1);
+                    showToast({
+                      title: "Added to cart",
+                      message: `${item.product_name} is now in your cart.`,
+                      variant: "success",
+                    });
+                  }}
                   disabled={item.stock <= 0}
                 >
                   <Text style={styles.cartButtonText}>
                     {item.stock <= 0
                       ? "Out of stock"
-                      : `Add to cart${getQuantityForProduct(item.id) > 0 ? ` (${getQuantityForProduct(item.id)})` : ""}`}
+                      : "Add to cart"}
                   </Text>
                 </Pressable>
               </View>

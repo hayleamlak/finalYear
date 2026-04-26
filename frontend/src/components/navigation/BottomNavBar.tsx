@@ -2,6 +2,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { useCart } from "@/context/CartContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
 
@@ -25,6 +26,7 @@ export function BottomNavBar({ currentPath }: BottomNavBarProps) {
   const router = useRouter();
   const { colors } = useTheme();
   const { t } = useLanguage();
+  const { itemCount } = useCart();
   const activePath = normalizePath(currentPath);
 
   const styles = createStyles(colors);
@@ -41,11 +43,18 @@ export function BottomNavBar({ currentPath }: BottomNavBarProps) {
           <Text style={[styles.label, activePath === "/products" && styles.labelActive]}>{t("nav.products")}</Text>
         </Pressable>
         <Pressable style={styles.item} onPress={() => router.push("/cart") }>
-          <MaterialCommunityIcons
-            name="cart-outline"
-            size={20}
-            color={activePath === "/cart" ? colors.accent : colors.textSubtle}
-          />
+          <View style={styles.iconWrap}>
+            <MaterialCommunityIcons
+              name="cart-outline"
+              size={20}
+              color={activePath === "/cart" ? colors.accent : colors.textSubtle}
+            />
+            {itemCount > 0 ? (
+              <View style={styles.cartBadge}>
+                <Text style={styles.cartBadgeText}>{itemCount > 99 ? "99+" : itemCount}</Text>
+              </View>
+            ) : null}
+          </View>
           <Text style={[styles.label, activePath === "/cart" && styles.labelActive]}>{t("nav.cart")}</Text>
         </Pressable>
         <Pressable style={styles.item} onPress={() => router.push("/account") }>
@@ -102,6 +111,33 @@ const createStyles = (colors: {
       borderRadius: 12,
       alignItems: "center",
       gap: 4,
+    },
+    iconWrap: {
+      position: "relative",
+      width: 22,
+      height: 22,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    cartBadge: {
+      position: "absolute",
+      top: -8,
+      right: -12,
+      minWidth: 18,
+      height: 18,
+      borderRadius: 999,
+      backgroundColor: "#dc2626",
+      borderWidth: 1,
+      borderColor: colors.surface,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: 4,
+    },
+    cartBadgeText: {
+      color: "#ffffff",
+      fontSize: 10,
+      fontWeight: "800",
+      lineHeight: 12,
     },
     label: {
       color: colors.textSubtle,

@@ -6,6 +6,7 @@ import * as SecureStore from "expo-secure-store";
 import { CartProvider } from "@/context/CartContext";
 import { LanguageProvider } from "@/context/LanguageContext";
 import { ThemeProvider } from "@/context/ThemeContext";
+import { ToastProvider } from "@/context/ToastContext";
 import { env } from "@/lib/env";
 
 WebBrowser.maybeCompleteAuthSession();
@@ -24,9 +25,11 @@ export default function RootLayout() {
     <ClerkProvider publishableKey={env.clerkPublishableKey} tokenCache={tokenCache}>
       <LanguageProvider>
         <ThemeProvider>
-          <CartProvider>
-            <Stack screenOptions={{ headerShown: false }} />
-          </CartProvider>
+          <ToastProvider>
+            <CartProvider>
+              <Stack screenOptions={{ headerShown: false }} />
+            </CartProvider>
+          </ToastProvider>
         </ThemeProvider>
       </LanguageProvider>
     </ClerkProvider>

@@ -84,7 +84,7 @@ export default function CartScreen() {
                       </Pressable>
 
                       <Pressable style={styles.removeButton} onPress={() => removeItem(item.product.id)}>
-                        <MaterialCommunityIcons name="trash-can-outline" size={14} color="#fca5a5" />
+                        <MaterialCommunityIcons name="trash-can-outline" size={14} color="#ffffff" />
                         <Text style={styles.removeButtonText}>{t("cart.remove")}</Text>
                       </Pressable>
                     </View>
@@ -269,7 +269,7 @@ const createStyles = (colors: {
   },
   removeButton: {
     marginLeft: "auto",
-    backgroundColor: colors.dangerSoft,
+    backgroundColor: "#dc2626",
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 6,
@@ -278,7 +278,7 @@ const createStyles = (colors: {
     gap: 4,
   },
   removeButtonText: {
-    color: "#fca5a5",
+    color: "#ffffff",
     fontWeight: "700",
     fontSize: 12,
   },
