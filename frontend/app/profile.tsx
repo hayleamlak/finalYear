@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useAuth, useUser } from "@clerk/clerk-expo";
 import { usePathname, useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { BottomNavBar } from "@/components/navigation/BottomNavBar";
@@ -31,11 +31,11 @@ export default function ProfileScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const loadedProfileUserIdRef = useRef<string | null>(null);
 
   const styles = createStyles(colors);
 
   const userEmail = user?.primaryEmailAddress?.emailAddress || "";
-  const userId = user?.id || "-";
 
   const saveDisabled = useMemo(() => {
     return isSaving || firstName.trim().length === 0 || lastName.trim().length === 0;
@@ -43,7 +43,13 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     const loadProfile = async () => {
-      if (!isSignedIn) {
+      if (!isSignedIn || !user?.id) {
+        loadedProfileUserIdRef.current = null;
+        return;
+      }
+
+      // Avoid resetting form fields while user is editing.
+      if (loadedProfileUserIdRef.current === user.id) {
         return;
       }
 
@@ -64,6 +70,7 @@ export default function ProfileScreen() {
         setAddress(profile.address || "");
         setEmail(profile.email || userEmail);
         setProfileLanguage(profile.language || "ENGLISH");
+        loadedProfileUserIdRef.current = user.id;
       } catch (error) {
         setErrorMessage(error instanceof Error ? error.message : "Unable to load profile.");
       } finally {
@@ -72,7 +79,7 @@ export default function ProfileScreen() {
     };
 
     void loadProfile();
-  }, [getToken, isSignedIn, user?.firstName, user?.lastName, userEmail]);
+  }, [getToken, isSignedIn, user?.id]);
 
   const onSave = async () => {
     try {
@@ -170,29 +177,6 @@ export default function ProfileScreen() {
               <Text style={styles.label}>Email</Text>
               <Text style={styles.value}>{email || userEmail || "-"}</Text>
             </View>
-            <View style={styles.row}>
-              <Text style={styles.label}>Preferred language</Text>
-              <View style={styles.languageRow}>
-                {LANGUAGE_OPTIONS.map((option) => {
-                  const active = option.value === profileLanguage;
-
-                  return (
-                    <Pressable
-                      key={option.value}
-                      style={[styles.languagePill, active && styles.languagePillActive]}
-                      onPress={() => setProfileLanguage(option.value)}
-                    >
-                      <Text style={[styles.languagePillText, active && styles.languagePillTextActive]}>{option.label}</Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </View>
-            <View style={styles.row}>
-              <Text style={styles.label}>User ID</Text>
-              <Text style={styles.value} numberOfLines={1}>{userId}</Text>
-            </View>
-
             <Pressable style={[styles.primaryButton, saveDisabled && styles.primaryButtonDisabled]} disabled={saveDisabled} onPress={() => void onSave()}>
               {isSaving ? <ActivityIndicator color={colors.primaryText} /> : <Text style={styles.primaryButtonText}>Save changes</Text>}
             </Pressable>
