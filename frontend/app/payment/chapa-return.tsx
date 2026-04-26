@@ -1,6 +1,6 @@
 import { useAuth } from "@clerk/clerk-expo";
 import { useLocalSearchParams, usePathname, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
 
 import { BottomNavBar } from "@/components/navigation/BottomNavBar";
@@ -21,6 +21,9 @@ export default function ChapaReturnScreen() {
   const { colors } = useTheme();
   const [state, setState] = useState<VerifyState>("loading");
   const [message, setMessage] = useState("Verifying payment...");
+  const handledTxRef = useRef<string | null>(null);
+  const didAutoNavigate = useRef(false);
+  const autoNavTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -33,6 +36,11 @@ export default function ChapaReturnScreen() {
         }
         return;
       }
+
+      if (handledTxRef.current === tx_ref) {
+        return;
+      }
+      handledTxRef.current = tx_ref;
 
       try {
         const token = await getToken();
@@ -55,6 +63,13 @@ export default function ChapaReturnScreen() {
             message: "Your order has been paid and confirmed.",
             variant: "success",
           });
+
+          if (!didAutoNavigate.current) {
+            didAutoNavigate.current = true;
+            autoNavTimer.current = setTimeout(() => {
+              router.replace("/products");
+            }, 1200);
+          }
         }
       } catch (error) {
         if (!cancelled) {
@@ -73,8 +88,11 @@ export default function ChapaReturnScreen() {
 
     return () => {
       cancelled = true;
+      if (autoNavTimer.current) {
+        clearTimeout(autoNavTimer.current);
+      }
     };
-  }, [clearCart, getToken, showToast, tx_ref]);
+  }, [clearCart, getToken, router, showToast, tx_ref]);
 
   const styles = createStyles(colors);
 

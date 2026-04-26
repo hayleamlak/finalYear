@@ -114,8 +114,22 @@ export function chapaReturnBridge(req: Request, res: Response) {
   </head>
   <body style="font-family: Arial, sans-serif; padding: 24px;">
     <p>Returning to app...</p>
-    <p><a href="${safeDeepLink}">Tap here if not redirected</a></p>
-    <script>window.location.replace(${JSON.stringify(deepLink)});</script>
+    <p><a id="open-app" href="${safeDeepLink}">Tap here if not redirected</a></p>
+    <script>
+      (function () {
+        var target = ${JSON.stringify(deepLink)};
+        function openApp() {
+          try { window.location.href = target; } catch (e) {}
+          try { window.location.replace(target); } catch (e) {}
+        }
+        openApp();
+        setTimeout(openApp, 250);
+        setTimeout(function () {
+          var link = document.getElementById("open-app");
+          if (link) link.click();
+        }, 600);
+      })();
+    </script>
   </body>
 </html>`);
 }

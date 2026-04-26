@@ -133,19 +133,10 @@ export default function CheckoutScreen() {
         throw new Error("Missing transaction reference from Chapa.");
       }
 
-      await apiFetch<{ success: boolean }>("/api/v1/orders/chapa/verify", {
-        method: "POST",
-        token,
-        body: JSON.stringify({ tx_ref: txRef }),
+      router.replace({
+        pathname: "/payment/chapa-return",
+        params: { tx_ref: txRef },
       });
-
-      clearCart();
-      showToast({
-        title: "Payment successful",
-        message: "Your order has been paid and confirmed.",
-        variant: "success",
-      });
-      router.push("/products");
     } catch (error) {
       showToast({
         title: "Payment failed",
