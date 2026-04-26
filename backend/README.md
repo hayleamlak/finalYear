@@ -8,6 +8,10 @@ This folder contains your new standalone backend using Node.js + Express + Prism
 2. Set `DATABASE_URL` to your PostgreSQL connection string.
 3. Set `CLERK_SECRET_KEY` from your Clerk dashboard.
 4. Set `CLIENT_ORIGIN` to your frontend origin.
+5. Set `CHAPA_SECRET_KEY` to your Chapa test secret key for backend initialize/verify.
+6. Keep `CHAPA_BASE_URL=https://api.chapa.co`.
+7. Set `CHAPA_RETURN_URL` to an `https://` URL Chapa can redirect to (recommended for mobile flow).
+8. Set `CHAPA_APP_RETURN_URL` to your mobile deep-link callback (example: `fypfrontend://payment/chapa-return`).
 
 ## 2) Install and run
 
@@ -28,6 +32,8 @@ Server base URL: `http://localhost:4000`
 - `GET /api/v1/products` -> paginated products list
 - `GET /api/v1/products/:productId` -> product details
 - `POST /api/v1/products` -> create product (requires Bearer token, role `SELLER` or `ADMIN`)
+- `POST /api/v1/orders/chapa/initialize` -> create pending order/payment + get Chapa checkout URL
+- `POST /api/v1/orders/chapa/verify` -> verify tx_ref and mark payment/order paid
 
 ## 4) Mobile app integration
 

@@ -29,6 +29,48 @@ app.get("/", (_req, res) => {
   });
 });
 
+app.get("/payment/chapa-return", (req, res) => {
+  const txRef = typeof req.query.tx_ref === "string" ? req.query.tx_ref : "";
+  const appReturnFromQuery = typeof req.query.app_return_url === "string" ? req.query.app_return_url : "";
+  const fallbackAppReturn = env.CHAPA_APP_RETURN_URL ?? "fypfrontend://payment/chapa-return";
+  const appReturnBase = appReturnFromQuery || fallbackAppReturn;
+
+  let deepLink: string;
+  try {
+    deepLink = new URL(appReturnBase).toString();
+  } catch {
+    deepLink = fallbackAppReturn;
+  }
+
+  try {
+    const deepLinkUrl = new URL(deepLink);
+    if (txRef) {
+      deepLinkUrl.searchParams.set("tx_ref", txRef);
+    }
+    deepLink = deepLinkUrl.toString();
+  } catch {
+    if (txRef) {
+      const separator = deepLink.includes("?") ? "&" : "?";
+      deepLink = `${deepLink}${separator}tx_ref=${encodeURIComponent(txRef)}`;
+    }
+  }
+
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.status(200).send(`<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Returning to app</title>
+  </head>
+  <body style="font-family: Arial, sans-serif; padding: 24px;">
+    <p>Returning to app...</p>
+    <p><a href="${deepLink}">Tap here if not redirected</a></p>
+    <script>window.location.replace(${JSON.stringify(deepLink)});</script>
+  </body>
+</html>`);
+});
+
 app.use("/api/v1/health", healthRouter);
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/products", productsRouter);

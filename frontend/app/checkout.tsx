@@ -10,10 +10,15 @@ import {
   TextInput,
   View,
 } from "react-native";
+import * as Linking from "expo-linking";
+import * as WebBrowser from "expo-web-browser";
+import { useAuth } from "@clerk/clerk-expo";
 
 import { BottomNavBar } from "@/components/navigation/BottomNavBar";
 import { useCart } from "@/context/CartContext";
 import { useTheme } from "@/context/ThemeContext";
+import { useToast } from "@/context/ToastContext";
+import { apiFetch } from "@/lib/api";
 
 type PaymentMethod = "cash" | "card";
 
@@ -26,6 +31,8 @@ export default function CheckoutScreen() {
   const router = useRouter();
   const pathname = usePathname();
   const { colors } = useTheme();
+  const { getToken } = useAuth();
+  const { showToast } = useToast();
   const { items, itemCount, subtotal, clearCart } = useCart();
 
   const [fullName, setFullName] = useState("");
@@ -34,6 +41,7 @@ export default function CheckoutScreen() {
   const [city, setCity] = useState("");
   const [note, setNote] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
+  const [isPaying, setIsPaying] = useState(false);
 
   const total = useMemo(() => {
     if (items.length === 0) {
@@ -43,7 +51,7 @@ export default function CheckoutScreen() {
     return subtotal + DELIVERY_FEE + SERVICE_FEE;
   }, [items.length, subtotal]);
 
-  const onPlaceOrder = () => {
+  const onPlaceOrder = async () => {
     if (items.length === 0) {
       Alert.alert("Cart is empty", "Add products before checkout.");
       return;
@@ -54,21 +62,99 @@ export default function CheckoutScreen() {
       return;
     }
 
-    const paymentLabel = paymentMethod === "cash" ? "Cash on delivery" : "Card payment";
+    if (isPaying) {
+      return;
+    }
 
-    Alert.alert(
-      "Order placed",
-      `Thanks, ${fullName.trim()}!\nTotal: ${formatPrice(total)}\nPayment: ${paymentLabel}`,
-      [
-        {
-          text: "OK",
-          onPress: () => {
-            clearCart();
-            router.push("/products");
+    if (paymentMethod === "cash") {
+      Alert.alert(
+        "Order placed",
+        `Thanks, ${fullName.trim()}!\nTotal: ${formatPrice(total)}\nPayment: Cash on delivery`,
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              clearCart();
+              router.push("/products");
+            },
           },
-        },
-      ],
-    );
+        ],
+      );
+      return;
+    }
+
+    try {
+      setIsPaying(true);
+
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Please sign in before checkout.");
+      }
+
+      const appReturnUrl = Linking.createURL("/payment/chapa-return");
+
+      const initResponse = await apiFetch<{
+        success: boolean;
+        data: { checkout_url: string; tx_ref: string; payment_id: string };
+      }>("/api/v1/orders/chapa/initialize", {
+        method: "POST",
+        token,
+        body: JSON.stringify({
+          items: items.map((item) => ({
+            product_id: item.product.id,
+            quantity: item.quantity,
+          })),
+          fullName: fullName.trim(),
+          phone: phone.trim(),
+          addressLine1: address.trim(),
+          city: city.trim(),
+          note: note.trim() || undefined,
+          returnUrl: appReturnUrl,
+          appReturnUrl,
+        }),
+      });
+
+      const sessionResult = await WebBrowser.openAuthSessionAsync(initResponse.data.checkout_url, appReturnUrl);
+
+      if (sessionResult.type === "cancel" || sessionResult.type === "dismiss") {
+        showToast({
+          title: "Payment cancelled",
+          message: "You cancelled Chapa checkout.",
+          variant: "info",
+        });
+        return;
+      }
+
+      const txRefFromReturn =
+        sessionResult.type === "success" ? new URL(sessionResult.url).searchParams.get("tx_ref") : null;
+
+      const txRef = txRefFromReturn || initResponse.data.tx_ref;
+      if (!txRef) {
+        throw new Error("Missing transaction reference from Chapa.");
+      }
+
+      await apiFetch<{ success: boolean }>("/api/v1/orders/chapa/verify", {
+        method: "POST",
+        token,
+        body: JSON.stringify({ tx_ref: txRef }),
+      });
+
+      clearCart();
+      showToast({
+        title: "Payment successful",
+        message: "Your order has been paid and confirmed.",
+        variant: "success",
+      });
+      router.push("/products");
+    } catch (error) {
+      showToast({
+        title: "Payment failed",
+        message: error instanceof Error ? error.message : "Unable to complete Chapa payment.",
+        variant: "error",
+      });
+    } finally {
+      setIsPaying(false);
+    }
   };
 
   const styles = createStyles(colors);
@@ -151,7 +237,7 @@ export default function CheckoutScreen() {
                   onPress={() => setPaymentMethod("card")}
                 >
                   <Text style={[styles.paymentPillText, paymentMethod === "card" && styles.paymentPillTextActive]}>
-                    Card
+                    Chapa
                   </Text>
                 </Pressable>
               </View>
@@ -177,8 +263,8 @@ export default function CheckoutScreen() {
                 <Text style={styles.totalValue}>{formatPrice(total)}</Text>
               </View>
 
-              <Pressable style={styles.primaryButton} onPress={onPlaceOrder}>
-                <Text style={styles.primaryButtonText}>Place order</Text>
+              <Pressable style={styles.primaryButton} onPress={onPlaceOrder} disabled={isPaying}>
+                <Text style={styles.primaryButtonText}>{isPaying ? "Opening Chapa..." : "Place order"}</Text>
               </Pressable>
               <Pressable style={styles.secondaryButton} onPress={() => router.push("/cart") }>
                 <Text style={styles.secondaryButtonText}>Back to cart</Text>
