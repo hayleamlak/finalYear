@@ -65,6 +65,61 @@ function extractProviderMessage(chapaData: { message?: string; detail?: string; 
   return undefined;
 }
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+export function chapaReturnBridge(req: Request, res: Response) {
+  const txRefDirect = typeof req.query.tx_ref === "string" ? req.query.tx_ref : "";
+  const txRefAmp = typeof req.query["amp;tx_ref"] === "string" ? req.query["amp;tx_ref"] : "";
+  const txRef = txRefDirect || txRefAmp;
+  const appReturnFromQuery = typeof req.query.app_return_url === "string" ? req.query.app_return_url : "";
+  const fallbackAppReturn = env.CHAPA_APP_RETURN_URL ?? "fypfrontend://payment/chapa-return";
+  const appReturnBase = appReturnFromQuery || fallbackAppReturn;
+
+  let deepLink: string;
+  try {
+    deepLink = new URL(appReturnBase).toString();
+  } catch {
+    deepLink = fallbackAppReturn;
+  }
+
+  try {
+    const deepLinkUrl = new URL(deepLink);
+    if (txRef) {
+      deepLinkUrl.searchParams.set("tx_ref", txRef);
+    }
+    deepLink = deepLinkUrl.toString();
+  } catch {
+    if (txRef) {
+      const separator = deepLink.includes("?") ? "&" : "?";
+      deepLink = `${deepLink}${separator}tx_ref=${encodeURIComponent(txRef)}`;
+    }
+  }
+
+  const safeDeepLink = escapeHtml(deepLink);
+
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.status(200).send(`<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Returning to app</title>
+  </head>
+  <body style="font-family: Arial, sans-serif; padding: 24px;">
+    <p>Returning to app...</p>
+    <p><a href="${safeDeepLink}">Tap here if not redirected</a></p>
+    <script>window.location.replace(${JSON.stringify(deepLink)});</script>
+  </body>
+</html>`);
+}
+
 export async function listMyOrders(req: Request, res: Response) {
   if (!req.user) {
     throw new ApiError(401, "Not authenticated");

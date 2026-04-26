@@ -10,7 +10,7 @@ This folder contains your new standalone backend using Node.js + Express + Prism
 4. Set `CLIENT_ORIGIN` to your frontend origin.
 5. Set `CHAPA_SECRET_KEY` to your Chapa test secret key for backend initialize/verify.
 6. Keep `CHAPA_BASE_URL=https://api.chapa.co`.
-7. Set `CHAPA_RETURN_URL` to an `https://` URL Chapa can redirect to (recommended for mobile flow).
+7. Set `CHAPA_RETURN_URL` to an `https://` URL Chapa can redirect to. Recommended: `https://<your-backend>/api/v1/orders/chapa/return`.
 8. Set `CHAPA_APP_RETURN_URL` to your mobile deep-link callback (example: `fypfrontend://payment/chapa-return`).
 
 ## 2) Install and run
