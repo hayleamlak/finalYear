@@ -1,4 +1,4 @@
-import { usePathname, useRouter } from "expo-router";
+import { Redirect, usePathname, useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import {
   Alert,
@@ -12,13 +12,14 @@ import {
 } from "react-native";
 import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
-import { useAuth } from "@clerk/clerk-expo";
+import { useAuth, useUser } from "@clerk/clerk-expo";
 
 import { BottomNavBar } from "@/components/navigation/BottomNavBar";
 import { useCart } from "@/context/CartContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useToast } from "@/context/ToastContext";
 import { apiFetch } from "@/lib/api";
+import { getRoleFromUser } from "@/lib/role";
 
 type PaymentMethod = "cash" | "card";
 
@@ -31,7 +32,8 @@ export default function CheckoutScreen() {
   const router = useRouter();
   const pathname = usePathname();
   const { colors } = useTheme();
-  const { getToken } = useAuth();
+  const { getToken, isSignedIn } = useAuth();
+  const { user, isLoaded: isUserLoaded } = useUser();
   const { showToast } = useToast();
   const { items, itemCount, subtotal, clearCart } = useCart();
 
@@ -149,6 +151,10 @@ export default function CheckoutScreen() {
   };
 
   const styles = createStyles(colors);
+
+  if (isUserLoaded && isSignedIn && getRoleFromUser(user) === "farmer") {
+    return <Redirect href="/farmer-dashboard" />;
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>

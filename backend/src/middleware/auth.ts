@@ -80,7 +80,10 @@ export function requireRole(allowedRoles: string[]) {
       return next(new ApiError(401, "Authentication required"));
     }
 
-    if (!allowedRoles.includes(req.user.role)) {
+    const normalizedRole = req.user.role.toUpperCase() === "FARMER" ? "SELLER" : req.user.role.toUpperCase();
+    const normalizedAllowedRoles = allowedRoles.map((role) => role.toUpperCase());
+
+    if (!normalizedAllowedRoles.includes(normalizedRole)) {
       return next(new ApiError(403, "Insufficient permissions"));
     }
 

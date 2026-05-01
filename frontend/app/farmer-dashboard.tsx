@@ -1,25 +1,65 @@
 import { useAuth, useUser } from "@clerk/clerk-expo";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { Redirect, useRouter } from "expo-router";
+import { Redirect, useLocalSearchParams, usePathname, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 
+import { BottomNavBar } from "@/components/navigation/BottomNavBar";
 import { useTheme } from "@/context/ThemeContext";
 import { apiFetch } from "@/lib/api";
+import {
+  deleteFarmerProduct,
+  fetchFarmerDashboard,
+  updateFarmerOrderItemStatus,
+  updateFarmerProduct,
+} from "@/lib/farmer";
 import { getRoleFromUser, toBackendRole } from "@/lib/role";
-import { ProductListResponse, ProductSummary } from "@/types/product";
+import { FarmerDashboardResponse, FarmerOrderItem, FarmerOrderStatus, FarmerProduct } from "@/types/farmer";
+import { ProductSummary } from "@/types/product";
+
+type FarmerTab = "overview" | "products" | "orders" | "earnings" | "profile";
 
 type CreateProductResponse = {
   success: boolean;
   data: ProductSummary;
 };
 
+const formatPrice = (value: number) =>
+  new Intl.NumberFormat("en-ET", { style: "currency", currency: "ETB" }).format(value);
+
+const orderActions: Array<{ label: string; status: FarmerOrderStatus; icon: keyof typeof MaterialCommunityIcons.glyphMap }> = [
+  { label: "Accept", status: "PROCESSING", icon: "check-circle-outline" },
+  { label: "Reject", status: "CANCELLED", icon: "close-circle-outline" },
+  { label: "Packed", status: "SHIPPED", icon: "package-variant-closed" },
+  { label: "Delivered", status: "DELIVERED", icon: "truck-check-outline" },
+];
+
 export default function FarmerDashboardScreen() {
   const router = useRouter();
+  const pathname = usePathname();
+  const params = useLocalSearchParams<{ tab?: FarmerTab }>();
   const { isSignedIn, getToken, isLoaded } = useAuth();
   const { user, isLoaded: isUserLoaded } = useUser();
   const { colors } = useTheme();
   const styles = createStyles(colors);
+
+  const [activeTab, setActiveTab] = useState<FarmerTab>("overview");
+  const [dashboard, setDashboard] = useState<FarmerDashboardResponse["data"] | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
@@ -27,45 +67,104 @@ export default function FarmerDashboardScreen() {
   const [image, setImage] = useState("");
   const [detail, setDetail] = useState("");
 
-  const [products, setProducts] = useState<ProductSummary[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [editingProduct, setEditingProduct] = useState<FarmerProduct | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editPrice, setEditPrice] = useState("");
+  const [editStock, setEditStock] = useState("");
+  const [editImage, setEditImage] = useState("");
+  const [editDetail, setEditDetail] = useState("");
 
   const role = getRoleFromUser(user);
 
-  const stats = useMemo(() => {
+  const products = dashboard?.products ?? [];
+  const orderItems = dashboard?.orderItems ?? [];
+  const reviews = dashboard?.reviews ?? [];
+
+  const computed = useMemo(() => {
     const totalStock = products.reduce((sum, item) => sum + item.stock, 0);
-    const totalValue = products.reduce((sum, item) => sum + item.price * item.stock, 0);
+    const totalInventoryValue = products.reduce((sum, item) => sum + item.price * item.stock, 0);
+    const latestProducts = products.slice(0, 5);
+    const lowStockProducts = products.filter((item) => item.stock <= 5).slice(0, 5);
+    const latestOrders = orderItems.slice(0, 5);
+    const transactions = orderItems
+      .filter((item) => item.order.payment)
+      .slice(0, 6);
 
     return {
-      totalProducts: products.length,
       totalStock,
-      totalValue,
+      totalInventoryValue,
+      latestProducts,
+      lowStockProducts,
+      latestOrders,
+      transactions,
     };
-  }, [products]);
+  }, [orderItems, products]);
+
+  const loadDashboard = async () => {
+    if (!isSignedIn) {
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      setErrorMessage(null);
+      setIsLoading(true);
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Missing auth token");
+      }
+
+      const response = await fetchFarmerDashboard(token);
+      setDashboard(response.data);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Unable to load farmer dashboard.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const loadMyProducts = async () => {
-      if (!isSignedIn || !user) {
-        setIsLoading(false);
-        return;
-      }
+    void loadDashboard();
+  }, [isSignedIn]);
 
-      try {
-        setErrorMessage(null);
-        setIsLoading(true);
-        const response = await apiFetch<ProductListResponse>("/api/v1/products?page=1&limit=50");
-        setProducts(response.data.items.filter((item) => item.farmer_id === user.id));
-      } catch (error) {
-        setErrorMessage(error instanceof Error ? error.message : "Unable to load products.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  useEffect(() => {
+    if (
+      params.tab === "overview" ||
+      params.tab === "products" ||
+      params.tab === "orders" ||
+      params.tab === "earnings" ||
+      params.tab === "profile"
+    ) {
+      setActiveTab(params.tab);
+    }
+  }, [params.tab]);
 
-    void loadMyProducts();
-  }, [isSignedIn, user]);
+  const resetCreateForm = () => {
+    setName("");
+    setPrice("");
+    setStock("");
+    setImage("");
+    setDetail("");
+  };
+
+  const startEditing = (product: FarmerProduct) => {
+    setEditingProduct(product);
+    setEditName(product.product_name);
+    setEditPrice(String(product.price));
+    setEditStock(String(product.stock));
+    setEditImage(product.image);
+    setEditDetail(product.product_detail ?? "");
+    setActiveTab("products");
+  };
+
+  const clearEditing = () => {
+    setEditingProduct(null);
+    setEditName("");
+    setEditPrice("");
+    setEditStock("");
+    setEditImage("");
+    setEditDetail("");
+  };
 
   const onCreateProduct = async () => {
     if (!user || isSubmitting) {
@@ -76,20 +175,19 @@ export default function FarmerDashboardScreen() {
     const numericStock = Number(stock);
 
     if (!name.trim() || !image.trim() || !Number.isFinite(numericPrice) || !Number.isFinite(numericStock)) {
-      setErrorMessage("Please fill all required fields with valid values.");
+      setErrorMessage("Please fill product name, image URL, price, and stock with valid values.");
       return;
     }
 
     try {
       setErrorMessage(null);
       setIsSubmitting(true);
-
       const token = await getToken();
       if (!token) {
         throw new Error("Missing auth token");
       }
 
-      const response = await apiFetch<CreateProductResponse>("/api/v1/products", {
+      await apiFetch<CreateProductResponse>("/api/v1/products", {
         method: "POST",
         token,
         body: JSON.stringify({
@@ -103,12 +201,8 @@ export default function FarmerDashboardScreen() {
         }),
       });
 
-      setProducts((current) => [response.data, ...current]);
-      setName("");
-      setPrice("");
-      setStock("");
-      setImage("");
-      setDetail("");
+      resetCreateForm();
+      await loadDashboard();
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unable to create product.");
     } finally {
@@ -116,10 +210,110 @@ export default function FarmerDashboardScreen() {
     }
   };
 
+  const onSaveProduct = async () => {
+    if (!editingProduct || isSubmitting) {
+      return;
+    }
+
+    const numericPrice = Number(editPrice);
+    const numericStock = Number(editStock);
+
+    if (!editName.trim() || !editImage.trim() || !Number.isFinite(numericPrice) || !Number.isFinite(numericStock)) {
+      setErrorMessage("Please fill product name, image URL, price, and stock with valid values.");
+      return;
+    }
+
+    try {
+      setErrorMessage(null);
+      setIsSubmitting(true);
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Missing auth token");
+      }
+
+      await updateFarmerProduct(token, editingProduct.id, {
+        product_name: editName.trim(),
+        price: numericPrice,
+        stock: Math.max(0, Math.floor(numericStock)),
+        image: editImage.trim(),
+        product_detail: editDetail.trim() || null,
+      });
+
+      clearEditing();
+      await loadDashboard();
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Unable to update product.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const onToggleAvailability = async (product: FarmerProduct) => {
+    try {
+      setBusyId(product.id);
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Missing auth token");
+      }
+
+      await updateFarmerProduct(token, product.id, {
+        status: product.status === "ACTIVE" ? "PAUSED" : "ACTIVE",
+      });
+      await loadDashboard();
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Unable to update product availability.");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const onDeleteProduct = (product: FarmerProduct) => {
+    Alert.alert("Remove product", `Mark ${product.product_name} as unavailable?`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Remove",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            setBusyId(product.id);
+            const token = await getToken();
+            if (!token) {
+              throw new Error("Missing auth token");
+            }
+
+            await deleteFarmerProduct(token, product.id);
+            await loadDashboard();
+          } catch (error) {
+            setErrorMessage(error instanceof Error ? error.message : "Unable to remove product.");
+          } finally {
+            setBusyId(null);
+          }
+        },
+      },
+    ]);
+  };
+
+  const onUpdateOrderStatus = async (item: FarmerOrderItem, status: FarmerOrderStatus) => {
+    try {
+      setBusyId(item.id);
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Missing auth token");
+      }
+
+      await updateFarmerOrderItemStatus(token, item.id, status);
+      await loadDashboard();
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Unable to update order status.");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   if (!isLoaded || !isUserLoaded) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <View style={styles.centerRow}>
+        <View style={styles.centerScreen}>
           <ActivityIndicator color={colors.accent} />
           <Text style={styles.helperText}>Loading...</Text>
         </View>
@@ -137,109 +331,403 @@ export default function FarmerDashboardScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         <View style={styles.headerRow}>
-          <View>
-            <Text style={styles.title}>Farmer Dashboard</Text>
-            <Text style={styles.subtitle}>Manage your products and track your inventory.</Text>
+          <View style={styles.avatar}>
+            {user?.imageUrl ? (
+              <Image source={{ uri: user.imageUrl }} style={styles.avatarImage} />
+            ) : (
+              <MaterialCommunityIcons name="sprout-outline" size={28} color={colors.accent} />
+            )}
           </View>
-        </View>
-
-        <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{stats.totalProducts}</Text>
-            <Text style={styles.statLabel}>Products</Text>
+          <View style={styles.headerText}>
+            <Text style={styles.title}>Farmer Workspace</Text>
+            <Text style={styles.subtitle}>Products, orders, earnings, visibility, and customer feedback.</Text>
           </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{stats.totalStock}</Text>
-            <Text style={styles.statLabel}>Stock Units</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{stats.totalValue.toFixed(0)} ETB</Text>
-            <Text style={styles.statLabel}>Inventory Value</Text>
-          </View>
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Add Product</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Product name"
-            placeholderTextColor={colors.textMuted}
-            value={name}
-            onChangeText={setName}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Price"
-            placeholderTextColor={colors.textMuted}
-            value={price}
-            onChangeText={setPrice}
-            keyboardType="decimal-pad"
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Stock"
-            placeholderTextColor={colors.textMuted}
-            value={stock}
-            onChangeText={setStock}
-            keyboardType="number-pad"
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Image URL"
-            placeholderTextColor={colors.textMuted}
-            value={image}
-            onChangeText={setImage}
-            autoCapitalize="none"
-          />
-          <TextInput
-            style={[styles.input, styles.multilineInput]}
-            placeholder="Product detail"
-            placeholderTextColor={colors.textMuted}
-            value={detail}
-            onChangeText={setDetail}
-            multiline
-          />
-
-          {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
-
-          <Pressable style={styles.primaryButton} disabled={isSubmitting} onPress={() => void onCreateProduct()}>
-            {isSubmitting ? <ActivityIndicator color={colors.primaryText} /> : <Text style={styles.primaryButtonText}>Create Product</Text>}
+          <Pressable style={styles.iconButton} onPress={() => void loadDashboard()}>
+            <MaterialCommunityIcons name="refresh" size={18} color={colors.text} />
           </Pressable>
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>My Products</Text>
-          {isLoading ? (
+        {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+
+        {isLoading ? (
+          <View style={styles.card}>
             <View style={styles.centerRow}>
               <ActivityIndicator color={colors.accent} />
-              <Text style={styles.helperText}>Loading...</Text>
+              <Text style={styles.helperText}>Loading farmer data...</Text>
             </View>
-          ) : products.length === 0 ? (
-            <Text style={styles.helperText}>No products yet.</Text>
-          ) : (
-            products.map((item) => (
-              <View key={item.id} style={styles.productRow}>
-                <View style={styles.productLeft}>
-                  <MaterialCommunityIcons name="leaf" size={18} color={colors.accent} />
-                  <View>
-                    <Text style={styles.productTitle}>{item.product_name}</Text>
-                    <Text style={styles.productMeta}>Stock: {item.stock}</Text>
+          </View>
+        ) : null}
+
+        {!isLoading && dashboard ? (
+          <>
+            {activeTab === "overview" ? (
+              <>
+                <View style={styles.statsGrid}>
+                  <StatCard icon="package-variant-closed" label="Products" value={String(dashboard.summary.totalProducts)} />
+                  <StatCard icon="clipboard-list-outline" label="Pending Orders" value={String(dashboard.summary.pendingOrders)} />
+                  <StatCard icon="cash-multiple" label="Earnings" value={formatPrice(dashboard.summary.totalEarnings)} />
+                  <StatCard icon="star-outline" label="Rating" value={dashboard.summary.averageRating.toFixed(1)} />
+                </View>
+
+                <View style={styles.card}>
+                  <View style={styles.sectionHeader}>
+                    <Text style={styles.cardTitle}>Inventory Alerts</Text>
+                    <Text style={styles.badgeText}>{dashboard.summary.lowStockProducts + dashboard.summary.outOfStockProducts}</Text>
+                  </View>
+                  {computed.lowStockProducts.length === 0 ? (
+                    <Text style={styles.helperText}>No low-stock products right now.</Text>
+                  ) : (
+                    computed.lowStockProducts.map((product) => (
+                      <View key={product.id} style={styles.alertProductRow}>
+                        <View style={styles.productLeft}>
+                          <MaterialCommunityIcons name="alert-circle-outline" size={18} color="#b45309" />
+                          <Text style={styles.productTitle}>{product.product_name}</Text>
+                        </View>
+                        <Text style={styles.warningText}>{product.stock === 0 ? "Out" : `${product.stock} left`}</Text>
+                      </View>
+                    ))
+                  )}
+                </View>
+
+                <View style={styles.card}>
+                  <View style={styles.sectionHeader}>
+                    <Text style={styles.cardTitle}>Recent Orders</Text>
+                    <Pressable onPress={() => setActiveTab("orders")}>
+                      <Text style={styles.linkText}>View all</Text>
+                    </Pressable>
+                  </View>
+                  {computed.latestOrders.length === 0 ? (
+                    <Text style={styles.helperText}>No incoming orders yet.</Text>
+                  ) : (
+                    computed.latestOrders.map((item) => <OrderCard key={item.id} item={item} compact />)
+                  )}
+                </View>
+
+                <View style={styles.card}>
+                  <View style={styles.sectionHeader}>
+                    <Text style={styles.cardTitle}>Latest Products</Text>
+                    <Pressable onPress={() => setActiveTab("products")}>
+                      <Text style={styles.linkText}>Manage</Text>
+                    </Pressable>
+                  </View>
+                  {computed.latestProducts.length === 0 ? (
+                    <Text style={styles.helperText}>No products yet.</Text>
+                  ) : (
+                    computed.latestProducts.map((product) => (
+                      <ProductCard
+                        key={product.id}
+                        product={product}
+                        busy={busyId === product.id}
+                        onEdit={() => startEditing(product)}
+                        onToggle={() => void onToggleAvailability(product)}
+                        onDelete={() => onDeleteProduct(product)}
+                      />
+                    ))
+                  )}
+                </View>
+              </>
+            ) : null}
+
+            {activeTab === "products" ? (
+              <>
+                <View style={styles.card}>
+                  <Text style={styles.cardTitle}>{editingProduct ? "Edit Product" : "Add Product"}</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Product name"
+                    placeholderTextColor={colors.textMuted}
+                    value={editingProduct ? editName : name}
+                    onChangeText={editingProduct ? setEditName : setName}
+                  />
+                  <View style={styles.twoColumn}>
+                    <TextInput
+                      style={[styles.input, styles.flexInput]}
+                      placeholder="Price"
+                      placeholderTextColor={colors.textMuted}
+                      value={editingProduct ? editPrice : price}
+                      onChangeText={editingProduct ? setEditPrice : setPrice}
+                      keyboardType="decimal-pad"
+                    />
+                    <TextInput
+                      style={[styles.input, styles.flexInput]}
+                      placeholder="Stock"
+                      placeholderTextColor={colors.textMuted}
+                      value={editingProduct ? editStock : stock}
+                      onChangeText={editingProduct ? setEditStock : setStock}
+                      keyboardType="number-pad"
+                    />
+                  </View>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Image URL"
+                    placeholderTextColor={colors.textMuted}
+                    value={editingProduct ? editImage : image}
+                    onChangeText={editingProduct ? setEditImage : setImage}
+                    autoCapitalize="none"
+                  />
+                  <TextInput
+                    style={[styles.input, styles.multilineInput]}
+                    placeholder="Description, category, unit type, seasonal notes"
+                    placeholderTextColor={colors.textMuted}
+                    value={editingProduct ? editDetail : detail}
+                    onChangeText={editingProduct ? setEditDetail : setDetail}
+                    multiline
+                  />
+                  <View style={styles.actionRow}>
+                    {editingProduct ? (
+                      <Pressable style={styles.secondaryButton} onPress={clearEditing}>
+                        <Text style={styles.secondaryButtonText}>Cancel</Text>
+                      </Pressable>
+                    ) : null}
+                    <Pressable
+                      style={styles.primaryButton}
+                      disabled={isSubmitting}
+                      onPress={() => void (editingProduct ? onSaveProduct() : onCreateProduct())}
+                    >
+                      {isSubmitting ? (
+                        <ActivityIndicator color={colors.primaryText} />
+                      ) : (
+                        <Text style={styles.primaryButtonText}>{editingProduct ? "Save Product" : "Create Product"}</Text>
+                      )}
+                    </Pressable>
                   </View>
                 </View>
-                <Text style={styles.productPrice}>{item.price} ETB</Text>
-              </View>
-            ))
-          )}
-        </View>
 
-        <Pressable style={styles.secondaryButton} onPress={() => router.push("/account") }>
-          <Text style={styles.secondaryButtonText}>Open Account Settings</Text>
-        </Pressable>
+                <View style={styles.card}>
+                  <Text style={styles.cardTitle}>Product Management</Text>
+                  {products.length === 0 ? (
+                    <Text style={styles.helperText}>No products yet.</Text>
+                  ) : (
+                    products.map((product) => (
+                      <ProductCard
+                        key={product.id}
+                        product={product}
+                        busy={busyId === product.id}
+                        onEdit={() => startEditing(product)}
+                        onToggle={() => void onToggleAvailability(product)}
+                        onDelete={() => onDeleteProduct(product)}
+                      />
+                    ))
+                  )}
+                </View>
+              </>
+            ) : null}
+
+            {activeTab === "orders" ? (
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>Incoming Orders</Text>
+                {orderItems.length === 0 ? (
+                  <Text style={styles.helperText}>No incoming orders yet.</Text>
+                ) : (
+                  orderItems.map((item) => (
+                    <OrderCard key={item.id} item={item}>
+                      <View style={styles.orderActions}>
+                        {orderActions.map((action) => (
+                          <Pressable
+                            key={action.status}
+                            style={styles.smallButton}
+                            disabled={busyId === item.id}
+                            onPress={() => void onUpdateOrderStatus(item, action.status)}
+                          >
+                            <MaterialCommunityIcons name={action.icon} size={15} color={colors.text} />
+                            <Text style={styles.smallButtonText}>{action.label}</Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                    </OrderCard>
+                  ))
+                )}
+              </View>
+            ) : null}
+
+            {activeTab === "earnings" ? (
+              <>
+                <View style={styles.statsGrid}>
+                  <StatCard icon="calendar-today" label="Today" value={formatPrice(dashboard.earnings.today)} />
+                  <StatCard icon="calendar-week" label="This Week" value={formatPrice(dashboard.earnings.week)} />
+                  <StatCard icon="calendar-month" label="This Month" value={formatPrice(dashboard.earnings.month)} />
+                  <StatCard icon="cash-check" label="Paid" value={formatPrice(dashboard.earnings.paidAmount)} />
+                </View>
+                <View style={styles.card}>
+                  <Text style={styles.cardTitle}>Payment Summary</Text>
+                  <InfoRow label="Paid payments" value={formatPrice(dashboard.earnings.paidAmount)} />
+                  <InfoRow label="Pending payments" value={formatPrice(dashboard.earnings.pendingAmount)} />
+                  <InfoRow label="Total earnings" value={formatPrice(dashboard.earnings.total)} />
+                </View>
+                <View style={styles.card}>
+                  <Text style={styles.cardTitle}>Chapa Transactions</Text>
+                  {computed.transactions.length === 0 ? (
+                    <Text style={styles.helperText}>No payment transactions yet.</Text>
+                  ) : (
+                    computed.transactions.map((item) => (
+                      <View key={`${item.id}-payment`} style={styles.transactionRow}>
+                        <View style={styles.productLeft}>
+                          <MaterialCommunityIcons name="credit-card-check-outline" size={18} color={colors.accent} />
+                          <View>
+                            <Text style={styles.productTitle}>{formatPrice(item.price * item.quantity)}</Text>
+                            <Text style={styles.productMeta}>{item.order.payment?.provider ?? "Payment"} | {item.order.payment?.status}</Text>
+                          </View>
+                        </View>
+                        <Text style={styles.productMeta}>{item.order.payment?.transactionRef?.slice(-8) ?? "-"}</Text>
+                      </View>
+                    ))
+                  )}
+                </View>
+              </>
+            ) : null}
+
+            {activeTab === "profile" ? (
+              <>
+                <View style={styles.card}>
+                  <Text style={styles.cardTitle}>Farmer Profile</Text>
+                  <InfoRow label="Farm name" value={`${dashboard.farmer.first_name} ${dashboard.farmer.last_name}`.trim()} />
+                  <InfoRow label="Owner email" value={dashboard.farmer.email} />
+                  <InfoRow label="Phone" value="Add in profile settings" />
+                  <InfoRow label="Location" value={dashboard.farmer.address ?? "No location yet"} />
+                  <InfoRow label="Status" value={dashboard.farmer.status} />
+                  <InfoRow
+                    label="Coordinates"
+                    value={
+                      dashboard.farmer.latitude && dashboard.farmer.longitude
+                        ? `${dashboard.farmer.latitude.toFixed(4)}, ${dashboard.farmer.longitude.toFixed(4)}`
+                        : "Not set"
+                    }
+                  />
+                  <Pressable style={styles.primaryButton} onPress={() => router.push("/profile")}>
+                    <Text style={styles.primaryButtonText}>Edit Profile</Text>
+                  </Pressable>
+                </View>
+
+                <View style={styles.card}>
+                  <View style={styles.sectionHeader}>
+                    <Text style={styles.cardTitle}>Reviews and Ratings</Text>
+                    <Text style={styles.badgeText}>{dashboard.summary.averageRating.toFixed(1)} / 5</Text>
+                  </View>
+                  {reviews.length === 0 ? (
+                    <Text style={styles.helperText}>No reviews yet.</Text>
+                  ) : (
+                    reviews.map((review) => (
+                      <View key={review.id} style={styles.reviewRow}>
+                        <View style={styles.sectionHeader}>
+                          <Text style={styles.productTitle}>
+                            {review.user.first_name} {review.user.last_name}
+                          </Text>
+                          <Text style={styles.ratingText}>{"★".repeat(review.rating)}</Text>
+                        </View>
+                        <Text style={styles.productMeta}>{review.product?.product_name ?? "Farm review"}</Text>
+                        {review.comment ? <Text style={styles.reviewText}>{review.comment}</Text> : null}
+                      </View>
+                    ))
+                  )}
+                </View>
+              </>
+            ) : null}
+          </>
+        ) : null}
       </ScrollView>
+      <BottomNavBar currentPath={pathname} />
     </SafeAreaView>
   );
+
+  function StatCard({
+    icon,
+    label,
+    value,
+  }: {
+    icon: keyof typeof MaterialCommunityIcons.glyphMap;
+    label: string;
+    value: string;
+  }) {
+    return (
+      <View style={styles.statCard}>
+        <MaterialCommunityIcons name={icon} size={20} color={colors.accent} />
+        <Text style={styles.statNumber} numberOfLines={1} adjustsFontSizeToFit>{value}</Text>
+        <Text style={styles.statLabel}>{label}</Text>
+      </View>
+    );
+  }
+
+  function ProductCard({
+    product,
+    busy,
+    onEdit,
+    onToggle,
+    onDelete,
+  }: {
+    product: FarmerProduct;
+    busy: boolean;
+    onEdit: () => void;
+    onToggle: () => void;
+    onDelete: () => void;
+  }) {
+    return (
+      <View style={styles.productRow}>
+        <Pressable style={styles.productTapArea} onPress={() => router.push(`/product/${product.id}`)}>
+          <Image source={{ uri: product.image }} style={styles.productImage} />
+          <View style={styles.productDetails}>
+            <Text style={styles.productTitle}>{product.product_name}</Text>
+            <Text style={styles.productMeta}>
+              {formatPrice(product.price)} | Stock: {product.stock} | {product.status}
+            </Text>
+            {product.product_detail ? <Text style={styles.productMeta} numberOfLines={2}>{product.product_detail}</Text> : null}
+          </View>
+        </Pressable>
+        <View style={styles.productButtons}>
+          <Pressable style={styles.iconButtonSmall} onPress={onEdit}>
+            <MaterialCommunityIcons name="pencil-outline" size={16} color={colors.text} />
+          </Pressable>
+          <Pressable style={styles.iconButtonSmall} disabled={busy} onPress={onToggle}>
+            <MaterialCommunityIcons
+              name={product.status === "ACTIVE" ? "pause-circle-outline" : "play-circle-outline"}
+              size={16}
+              color={colors.text}
+            />
+          </Pressable>
+          <Pressable style={styles.iconButtonSmall} disabled={busy} onPress={onDelete}>
+            <MaterialCommunityIcons name="delete-outline" size={16} color="#b91c1c" />
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
+  function OrderCard({ item, compact, children }: { item: FarmerOrderItem; compact?: boolean; children?: React.ReactNode }) {
+    const buyerName = `${item.order.user.first_name} ${item.order.user.last_name}`.trim();
+    const total = item.price * item.quantity;
+
+    return (
+      <View style={styles.orderCard}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.productTitle}>{item.product.product_name}</Text>
+          <Text style={styles.statusBadge}>{item.status}</Text>
+        </View>
+        <Text style={styles.productMeta}>Buyer: {buyerName || item.order.user.email}</Text>
+        <Text style={styles.productMeta}>Qty: {item.quantity} | Total: {formatPrice(total)}</Text>
+        {!compact ? (
+          <>
+            <Text style={styles.productMeta}>
+              Delivery: {item.order.address.addressLine1}, {item.order.address.city}
+            </Text>
+            <Text style={styles.productMeta}>
+              Payment: {item.order.payment?.provider ?? "N/A"} | {item.order.payment?.status ?? "N/A"}
+            </Text>
+          </>
+        ) : null}
+        {children}
+      </View>
+    );
+  }
+
+  function InfoRow({ label, value }: { label: string; value: string }) {
+    return (
+      <View style={styles.infoRow}>
+        <Text style={styles.infoLabel}>{label}</Text>
+        <Text style={styles.infoValue}>{value}</Text>
+      </View>
+    );
+  }
 }
 
 const createStyles = (colors: {
@@ -253,6 +741,7 @@ const createStyles = (colors: {
   primary: string;
   primaryText: string;
   accent: string;
+  accentSoft: string;
   dangerSoft: string;
 }) =>
   StyleSheet.create({
@@ -262,43 +751,73 @@ const createStyles = (colors: {
     },
     container: {
       padding: 20,
+      paddingBottom: 112,
       gap: 12,
     },
+    centerScreen: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+    },
     headerRow: {
-      marginBottom: 8,
-      gap: 10,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+    },
+    headerText: {
+      flex: 1,
+    },
+    avatar: {
+      width: 52,
+      height: 52,
+      borderRadius: 16,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      overflow: "hidden",
+    },
+    avatarImage: {
+      width: "100%",
+      height: "100%",
     },
     title: {
       color: colors.text,
-      fontSize: 30,
+      fontSize: 28,
       fontWeight: "900",
     },
     subtitle: {
       color: colors.textMuted,
-      marginTop: 4,
+      marginTop: 3,
+      lineHeight: 19,
     },
-    statsRow: {
+    statsGrid: {
       flexDirection: "row",
+      flexWrap: "wrap",
       gap: 10,
     },
     statCard: {
-      flex: 1,
+      width: "48%",
+      minHeight: 104,
       borderRadius: 14,
       borderWidth: 1,
       borderColor: colors.border,
       backgroundColor: colors.surface,
       padding: 12,
-      gap: 4,
+      gap: 5,
+      justifyContent: "center",
     },
     statNumber: {
       color: colors.text,
       fontWeight: "900",
-      fontSize: 16,
+      fontSize: 17,
     },
     statLabel: {
       color: colors.textSubtle,
       fontSize: 12,
-      fontWeight: "700",
+      fontWeight: "800",
     },
     card: {
       borderRadius: 16,
@@ -308,10 +827,31 @@ const createStyles = (colors: {
       padding: 14,
       gap: 10,
     },
+    sectionHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 10,
+    },
     cardTitle: {
       color: colors.text,
-      fontWeight: "800",
+      fontWeight: "900",
       fontSize: 16,
+    },
+    badgeText: {
+      color: colors.accent,
+      backgroundColor: colors.accentSoft,
+      overflow: "hidden",
+      borderRadius: 999,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      fontWeight: "900",
+      fontSize: 12,
+    },
+    linkText: {
+      color: colors.accent,
+      fontWeight: "900",
+      fontSize: 12,
     },
     input: {
       borderWidth: 1,
@@ -326,22 +866,64 @@ const createStyles = (colors: {
       minHeight: 84,
       textAlignVertical: "top",
     },
-    errorText: {
-      color: "#b91c1c",
-      backgroundColor: colors.dangerSoft,
-      borderRadius: 8,
-      padding: 8,
+    twoColumn: {
+      flexDirection: "row",
+      gap: 10,
+    },
+    flexInput: {
+      flex: 1,
+    },
+    actionRow: {
+      flexDirection: "row",
+      gap: 10,
     },
     primaryButton: {
+      flex: 1,
       borderRadius: 10,
       backgroundColor: colors.primary,
       alignItems: "center",
       justifyContent: "center",
       minHeight: 42,
+      paddingHorizontal: 12,
     },
     primaryButtonText: {
       color: colors.primaryText,
+      fontWeight: "900",
+    },
+    secondaryButton: {
+      flex: 1,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+      alignItems: "center",
+      justifyContent: "center",
+      minHeight: 42,
+      paddingHorizontal: 12,
+    },
+    secondaryButtonText: {
+      color: colors.text,
       fontWeight: "800",
+    },
+    iconButton: {
+      width: 42,
+      height: 42,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    iconButtonSmall: {
+      width: 34,
+      height: 34,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+      alignItems: "center",
+      justifyContent: "center",
     },
     centerRow: {
       flexDirection: "row",
@@ -350,8 +932,58 @@ const createStyles = (colors: {
     },
     helperText: {
       color: colors.textSubtle,
+      lineHeight: 19,
+    },
+    errorText: {
+      color: "#b91c1c",
+      backgroundColor: colors.dangerSoft,
+      borderRadius: 10,
+      padding: 10,
     },
     productRow: {
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surfaceAlt,
+      padding: 10,
+      gap: 10,
+    },
+    productTapArea: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+    },
+    productImage: {
+      width: 58,
+      height: 58,
+      borderRadius: 10,
+      backgroundColor: colors.surface,
+    },
+    productDetails: {
+      flex: 1,
+      gap: 3,
+    },
+    productTitle: {
+      color: colors.text,
+      fontWeight: "800",
+    },
+    productMeta: {
+      color: colors.textSubtle,
+      fontSize: 12,
+      lineHeight: 17,
+    },
+    productButtons: {
+      flexDirection: "row",
+      justifyContent: "flex-end",
+      gap: 8,
+    },
+    productLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      flex: 1,
+    },
+    alertProductRow: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
@@ -362,35 +994,92 @@ const createStyles = (colors: {
       padding: 10,
       gap: 8,
     },
-    productLeft: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 8,
-      flex: 1,
-    },
-    productTitle: {
-      color: colors.text,
-      fontWeight: "700",
-    },
-    productMeta: {
-      color: colors.textSubtle,
+    warningText: {
+      color: "#b45309",
+      fontWeight: "900",
       fontSize: 12,
     },
-    productPrice: {
-      color: colors.accent,
-      fontWeight: "800",
+    orderCard: {
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surfaceAlt,
+      padding: 12,
+      gap: 5,
     },
-    secondaryButton: {
-      marginBottom: 14,
+    statusBadge: {
+      color: colors.accent,
+      backgroundColor: colors.accentSoft,
+      overflow: "hidden",
+      borderRadius: 999,
+      paddingHorizontal: 9,
+      paddingVertical: 4,
+      fontWeight: "900",
+      fontSize: 11,
+    },
+    orderActions: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+      paddingTop: 6,
+    },
+    smallButton: {
       borderRadius: 10,
       borderWidth: 1,
       borderColor: colors.border,
       backgroundColor: colors.surface,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+      flexDirection: "row",
       alignItems: "center",
-      paddingVertical: 10,
+      gap: 5,
     },
-    secondaryButtonText: {
+    smallButtonText: {
       color: colors.text,
-      fontWeight: "700",
+      fontWeight: "800",
+      fontSize: 12,
+    },
+    transactionRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surfaceAlt,
+      padding: 10,
+      gap: 8,
+    },
+    infoRow: {
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      paddingVertical: 9,
+      gap: 3,
+    },
+    infoLabel: {
+      color: colors.textSubtle,
+      fontWeight: "800",
+      fontSize: 12,
+    },
+    infoValue: {
+      color: colors.text,
+      fontWeight: "800",
+      lineHeight: 19,
+    },
+    reviewRow: {
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surfaceAlt,
+      padding: 12,
+      gap: 5,
+    },
+    ratingText: {
+      color: colors.accent,
+      fontWeight: "900",
+    },
+    reviewText: {
+      color: colors.text,
+      lineHeight: 19,
     },
   });

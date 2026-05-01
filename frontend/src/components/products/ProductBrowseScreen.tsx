@@ -1,5 +1,5 @@
-import { useAuth } from "@clerk/clerk-expo";
-import { usePathname, useRouter } from "expo-router";
+import { useAuth, useUser } from "@clerk/clerk-expo";
+import { Redirect, usePathname, useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -19,6 +19,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { useToast } from "@/context/ToastContext";
 import { apiFetch } from "@/lib/api";
 import { useCart } from "@/context/CartContext";
+import { getRoleFromUser } from "@/lib/role";
 import { ProductListResponse, ProductSummary } from "@/types/product";
 
 const formatPrice = (value: number) =>
@@ -42,6 +43,7 @@ export function ProductBrowseScreen() {
   const { colors } = useTheme();
   const { showToast } = useToast();
   const { isSignedIn } = useAuth();
+  const { user, isLoaded: isUserLoaded } = useUser();
   const { itemCount, addItem } = useCart();
   const [items, setItems] = useState<ProductSummary[]>([]);
   const [visibleItemIds, setVisibleItemIds] = useState<string[]>([]);
@@ -103,6 +105,10 @@ export function ProductBrowseScreen() {
   };
 
   const styles = createStyles(colors);
+
+  if (isUserLoaded && isSignedIn && getRoleFromUser(user) === "farmer") {
+    return <Redirect href="/farmer-dashboard" />;
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>

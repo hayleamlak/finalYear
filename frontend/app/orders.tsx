@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useAuth } from "@clerk/clerk-expo";
-import { usePathname, useRouter } from "expo-router";
+import { useAuth, useUser } from "@clerk/clerk-expo";
+import { Redirect, usePathname, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
 
@@ -8,6 +8,7 @@ import { BottomNavBar } from "@/components/navigation/BottomNavBar";
 import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
 import { fetchMyOrders } from "@/lib/orders";
+import { getRoleFromUser } from "@/lib/role";
 import { OrderSummary } from "@/types/order";
 
 const formatPrice = (value: number) => new Intl.NumberFormat("en-ET", { style: "currency", currency: "ETB" }).format(value);
@@ -17,6 +18,7 @@ export default function OrdersScreen() {
   const pathname = usePathname();
   const { colors } = useTheme();
   const { isSignedIn, getToken } = useAuth();
+  const { user, isLoaded: isUserLoaded } = useUser();
   const { t } = useLanguage();
   const [orders, setOrders] = useState<OrderSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -59,6 +61,10 @@ export default function OrdersScreen() {
 
     void loadOrders();
   }, [isSignedIn, refreshTick]);
+
+  if (isUserLoaded && isSignedIn && getRoleFromUser(user) === "farmer") {
+    return <Redirect href="/farmer-dashboard" />;
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>

@@ -1,11 +1,13 @@
+import { useAuth, useUser } from "@clerk/clerk-expo";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { usePathname, useRouter } from "expo-router";
+import { Redirect, usePathname, useRouter } from "expo-router";
 import { FlatList, Image, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
 
 import { BottomNavBar } from "@/components/navigation/BottomNavBar";
 import { useCart } from "@/context/CartContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
+import { getRoleFromUser } from "@/lib/role";
 
 const CURRENCY_LOCALE_MAP = {
   en: "en-ET",
@@ -20,9 +22,15 @@ export default function CartScreen() {
   const router = useRouter();
   const pathname = usePathname();
   const { colors } = useTheme();
+  const { isSignedIn } = useAuth();
+  const { user, isLoaded: isUserLoaded } = useUser();
   const { locale, t, getCountLabel } = useLanguage();
   const { items, itemCount, subtotal, updateQuantity, removeItem, clearCart } = useCart();
   const styles = createStyles(colors);
+
+  if (isUserLoaded && isSignedIn && getRoleFromUser(user) === "farmer") {
+    return <Redirect href="/farmer-dashboard" />;
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>

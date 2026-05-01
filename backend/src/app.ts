@@ -7,6 +7,7 @@ import { env } from "./config/env";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 import { authRouter } from "./routes/auth.routes";
 import { chapaReturnBridge } from "./controllers/orders.controller";
+import { farmerRouter } from "./routes/farmer.routes";
 import { healthRouter } from "./routes/health.routes";
 import { ordersRouter } from "./routes/orders.routes";
 import { productsRouter } from "./routes/products.routes";
@@ -35,6 +36,7 @@ app.get("/api/v1/orders/chapa/return", chapaReturnBridge);
 
 app.use("/api/v1/health", healthRouter);
 app.use("/api/v1/auth", authRouter);
+app.use("/api/v1/farmer", farmerRouter);
 app.use("/api/v1/products", productsRouter);
 app.use("/api/v1/orders", ordersRouter);
 

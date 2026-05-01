@@ -1,6 +1,6 @@
 import { useAuth, useClerk, useUser } from "@clerk/clerk-expo";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { usePathname, useRouter } from "expo-router";
+import { Redirect, usePathname, useRouter } from "expo-router";
 import { Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { LanguageSwitcher } from "@/components/language/LanguageSwitcher";
@@ -8,6 +8,7 @@ import { BottomNavBar } from "@/components/navigation/BottomNavBar";
 import { ThemeToggleButton } from "@/components/theme/ThemeToggleButton";
 import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
+import { getRoleFromUser } from "@/lib/role";
 
 export default function AccountScreen() {
   const router = useRouter();
@@ -15,12 +16,16 @@ export default function AccountScreen() {
   const { t, locale } = useLanguage();
   const { colors, mode } = useTheme();
   const { isSignedIn } = useAuth();
-  const { user } = useUser();
+  const { user, isLoaded: isUserLoaded } = useUser();
   const { signOut } = useClerk();
   const styles = createStyles(colors);
 
   const displayName = user?.fullName || user?.firstName || user?.username || "User";
   const email = user?.primaryEmailAddress?.emailAddress;
+
+  if (isUserLoaded && isSignedIn && getRoleFromUser(user) === "farmer") {
+    return <Redirect href="/farmer-dashboard" />;
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
