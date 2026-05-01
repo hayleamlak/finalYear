@@ -1,4 +1,5 @@
 import { useAuth, useUser } from "@clerk/clerk-expo";
+import * as ImagePicker from "expo-image-picker";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Redirect, useLocalSearchParams, usePathname, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
@@ -29,11 +30,15 @@ import { FarmerDashboardResponse, FarmerOrderItem, FarmerOrderStatus, FarmerProd
 import { ProductSummary } from "@/types/product";
 
 type FarmerTab = "overview" | "products" | "orders" | "earnings" | "profile";
+type ProductFormMode = "create" | "edit";
+type ProductFormErrors = Partial<Record<"name" | "price" | "stock" | "image" | "detail", string>>;
 
 type CreateProductResponse = {
   success: boolean;
   data: ProductSummary;
 };
+
+const MAX_IMAGE_BYTES = 7 * 1024 * 1024;
 
 const formatPrice = (value: number) =>
   new Intl.NumberFormat("en-ET", { style: "currency", currency: "ETB" }).format(value);
@@ -66,6 +71,7 @@ export default function FarmerDashboardScreen() {
   const [stock, setStock] = useState("");
   const [image, setImage] = useState("");
   const [detail, setDetail] = useState("");
+  const [createFormErrors, setCreateFormErrors] = useState<ProductFormErrors>({});
 
   const [editingProduct, setEditingProduct] = useState<FarmerProduct | null>(null);
   const [editName, setEditName] = useState("");
@@ -73,6 +79,7 @@ export default function FarmerDashboardScreen() {
   const [editStock, setEditStock] = useState("");
   const [editImage, setEditImage] = useState("");
   const [editDetail, setEditDetail] = useState("");
+  const [editFormErrors, setEditFormErrors] = useState<ProductFormErrors>({});
 
   const role = getRoleFromUser(user);
 
@@ -145,6 +152,7 @@ export default function FarmerDashboardScreen() {
     setStock("");
     setImage("");
     setDetail("");
+    setCreateFormErrors({});
   };
 
   const startEditing = (product: FarmerProduct) => {
@@ -154,6 +162,7 @@ export default function FarmerDashboardScreen() {
     setEditStock(String(product.stock));
     setEditImage(product.image);
     setEditDetail(product.product_detail ?? "");
+    setEditFormErrors({});
     setActiveTab("products");
   };
 
@@ -164,6 +173,114 @@ export default function FarmerDashboardScreen() {
     setEditStock("");
     setEditImage("");
     setEditDetail("");
+    setEditFormErrors({});
+  };
+
+  const estimateBase64Bytes = (value: string) => Math.ceil((value.length * 3) / 4);
+
+  const validateProductForm = ({
+    formName,
+    formPrice,
+    formStock,
+    formImage,
+    formDetail,
+  }: {
+    formName: string;
+    formPrice: string;
+    formStock: string;
+    formImage: string;
+    formDetail: string;
+  }) => {
+    const nextErrors: ProductFormErrors = {};
+    const trimmedName = formName.trim();
+    const trimmedDetail = formDetail.trim();
+    const numericPrice = Number(formPrice);
+    const numericStock = Number(formStock);
+
+    if (trimmedName.length < 2) {
+      nextErrors.name = "Product name must be at least 2 characters.";
+    } else if (trimmedName.length > 80) {
+      nextErrors.name = "Product name must be 80 characters or fewer.";
+    }
+
+    if (!Number.isFinite(numericPrice) || numericPrice <= 0) {
+      nextErrors.price = "Enter a price greater than 0.";
+    }
+
+    if (!Number.isFinite(numericStock) || numericStock < 0 || !Number.isInteger(numericStock)) {
+      nextErrors.stock = "Enter a whole stock number of 0 or more.";
+    }
+
+    if (!formImage.trim()) {
+      nextErrors.image = "Choose a product image from your phone.";
+    }
+
+    if (trimmedDetail.length < 10) {
+      nextErrors.detail = "Description must be at least 10 characters.";
+    } else if (trimmedDetail.length > 500) {
+      nextErrors.detail = "Description must be 500 characters or fewer.";
+    }
+
+    return {
+      errors: nextErrors,
+      isValid: Object.keys(nextErrors).length === 0,
+      numericPrice,
+      numericStock,
+      trimmedName,
+      trimmedDetail,
+    };
+  };
+
+  const pickProductImage = async (mode: ProductFormMode) => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permission.granted) {
+      Alert.alert("Photo access needed", "Please allow photo library access to choose a product image.");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.45,
+      base64: true,
+    });
+
+    if (result.canceled) {
+      return;
+    }
+
+    const asset = result.assets[0];
+    if (!asset?.base64) {
+      const message = "Could not read that image. Please choose another photo.";
+      if (mode === "create") {
+        setCreateFormErrors((current) => ({ ...current, image: message }));
+      } else {
+        setEditFormErrors((current) => ({ ...current, image: message }));
+      }
+      return;
+    }
+
+    if (estimateBase64Bytes(asset.base64) > MAX_IMAGE_BYTES) {
+      const message = "Image is too large. Choose a smaller photo or crop it tighter.";
+      if (mode === "create") {
+        setCreateFormErrors((current) => ({ ...current, image: message }));
+      } else {
+        setEditFormErrors((current) => ({ ...current, image: message }));
+      }
+      return;
+    }
+
+    const imageData = `data:image/jpeg;base64,${asset.base64}`;
+
+    if (mode === "create") {
+      setImage(imageData);
+      setCreateFormErrors((current) => ({ ...current, image: undefined }));
+    } else {
+      setEditImage(imageData);
+      setEditFormErrors((current) => ({ ...current, image: undefined }));
+    }
   };
 
   const onCreateProduct = async () => {
@@ -171,11 +288,17 @@ export default function FarmerDashboardScreen() {
       return;
     }
 
-    const numericPrice = Number(price);
-    const numericStock = Number(stock);
+    const validation = validateProductForm({
+      formName: name,
+      formPrice: price,
+      formStock: stock,
+      formImage: image,
+      formDetail: detail,
+    });
+    setCreateFormErrors(validation.errors);
 
-    if (!name.trim() || !image.trim() || !Number.isFinite(numericPrice) || !Number.isFinite(numericStock)) {
-      setErrorMessage("Please fill product name, image URL, price, and stock with valid values.");
+    if (!validation.isValid) {
+      setErrorMessage("Please fix the highlighted product fields.");
       return;
     }
 
@@ -193,10 +316,10 @@ export default function FarmerDashboardScreen() {
         body: JSON.stringify({
           product_name: name.trim(),
           farmer_id: user.id,
-          price: numericPrice,
-          stock: Math.max(0, Math.floor(numericStock)),
+          price: validation.numericPrice,
+          stock: validation.numericStock,
           image: image.trim(),
-          product_detail: detail.trim() || undefined,
+          product_detail: validation.trimmedDetail,
           role: toBackendRole(role),
         }),
       });
@@ -215,11 +338,17 @@ export default function FarmerDashboardScreen() {
       return;
     }
 
-    const numericPrice = Number(editPrice);
-    const numericStock = Number(editStock);
+    const validation = validateProductForm({
+      formName: editName,
+      formPrice: editPrice,
+      formStock: editStock,
+      formImage: editImage,
+      formDetail: editDetail,
+    });
+    setEditFormErrors(validation.errors);
 
-    if (!editName.trim() || !editImage.trim() || !Number.isFinite(numericPrice) || !Number.isFinite(numericStock)) {
-      setErrorMessage("Please fill product name, image URL, price, and stock with valid values.");
+    if (!validation.isValid) {
+      setErrorMessage("Please fix the highlighted product fields.");
       return;
     }
 
@@ -232,11 +361,11 @@ export default function FarmerDashboardScreen() {
       }
 
       await updateFarmerProduct(token, editingProduct.id, {
-        product_name: editName.trim(),
-        price: numericPrice,
-        stock: Math.max(0, Math.floor(numericStock)),
+        product_name: validation.trimmedName,
+        price: validation.numericPrice,
+        stock: validation.numericStock,
         image: editImage.trim(),
-        product_detail: editDetail.trim() || null,
+        product_detail: validation.trimmedDetail,
       });
 
       clearEditing();
@@ -434,47 +563,56 @@ export default function FarmerDashboardScreen() {
               <>
                 <View style={styles.card}>
                   <Text style={styles.cardTitle}>{editingProduct ? "Edit Product" : "Add Product"}</Text>
+                  <ProductImagePicker
+                    imageUri={editingProduct ? editImage : image}
+                    error={editingProduct ? editFormErrors.image : createFormErrors.image}
+                    onPress={() => void pickProductImage(editingProduct ? "edit" : "create")}
+                  />
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, (editingProduct ? editFormErrors.name : createFormErrors.name) && styles.inputError]}
                     placeholder="Product name"
                     placeholderTextColor={colors.textMuted}
                     value={editingProduct ? editName : name}
                     onChangeText={editingProduct ? setEditName : setName}
                   />
+                  <FieldError message={editingProduct ? editFormErrors.name : createFormErrors.name} />
                   <View style={styles.twoColumn}>
-                    <TextInput
-                      style={[styles.input, styles.flexInput]}
-                      placeholder="Price"
-                      placeholderTextColor={colors.textMuted}
-                      value={editingProduct ? editPrice : price}
-                      onChangeText={editingProduct ? setEditPrice : setPrice}
-                      keyboardType="decimal-pad"
-                    />
-                    <TextInput
-                      style={[styles.input, styles.flexInput]}
-                      placeholder="Stock"
-                      placeholderTextColor={colors.textMuted}
-                      value={editingProduct ? editStock : stock}
-                      onChangeText={editingProduct ? setEditStock : setStock}
-                      keyboardType="number-pad"
-                    />
+                    <View style={styles.flexInput}>
+                      <TextInput
+                        style={[styles.input, (editingProduct ? editFormErrors.price : createFormErrors.price) && styles.inputError]}
+                        placeholder="Price"
+                        placeholderTextColor={colors.textMuted}
+                        value={editingProduct ? editPrice : price}
+                        onChangeText={editingProduct ? setEditPrice : setPrice}
+                        keyboardType="decimal-pad"
+                      />
+                      <FieldError message={editingProduct ? editFormErrors.price : createFormErrors.price} />
+                    </View>
+                    <View style={styles.flexInput}>
+                      <TextInput
+                        style={[styles.input, (editingProduct ? editFormErrors.stock : createFormErrors.stock) && styles.inputError]}
+                        placeholder="Stock"
+                        placeholderTextColor={colors.textMuted}
+                        value={editingProduct ? editStock : stock}
+                        onChangeText={editingProduct ? setEditStock : setStock}
+                        keyboardType="number-pad"
+                      />
+                      <FieldError message={editingProduct ? editFormErrors.stock : createFormErrors.stock} />
+                    </View>
                   </View>
                   <TextInput
-                    style={styles.input}
-                    placeholder="Image URL"
-                    placeholderTextColor={colors.textMuted}
-                    value={editingProduct ? editImage : image}
-                    onChangeText={editingProduct ? setEditImage : setImage}
-                    autoCapitalize="none"
-                  />
-                  <TextInput
-                    style={[styles.input, styles.multilineInput]}
+                    style={[
+                      styles.input,
+                      styles.multilineInput,
+                      (editingProduct ? editFormErrors.detail : createFormErrors.detail) && styles.inputError,
+                    ]}
                     placeholder="Description, category, unit type, seasonal notes"
                     placeholderTextColor={colors.textMuted}
                     value={editingProduct ? editDetail : detail}
                     onChangeText={editingProduct ? setEditDetail : setDetail}
                     multiline
                   />
+                  <FieldError message={editingProduct ? editFormErrors.detail : createFormErrors.detail} />
                   <View style={styles.actionRow}>
                     {editingProduct ? (
                       <Pressable style={styles.secondaryButton} onPress={clearEditing}>
@@ -647,6 +785,40 @@ export default function FarmerDashboardScreen() {
         <Text style={styles.statLabel}>{label}</Text>
       </View>
     );
+  }
+
+  function ProductImagePicker({
+    imageUri,
+    error,
+    onPress,
+  }: {
+    imageUri: string;
+    error?: string;
+    onPress: () => void;
+  }) {
+    return (
+      <View style={styles.imagePickerBlock}>
+        <Pressable style={[styles.imagePicker, error && styles.inputError]} onPress={onPress}>
+          {imageUri ? (
+            <Image source={{ uri: imageUri }} style={styles.imagePreview} />
+          ) : (
+            <View style={styles.imagePickerEmpty}>
+              <MaterialCommunityIcons name="image-plus" size={28} color={colors.accent} />
+              <Text style={styles.imagePickerText}>Choose product image</Text>
+            </View>
+          )}
+          <View style={styles.imagePickerAction}>
+            <MaterialCommunityIcons name="folder-image" size={16} color={colors.primaryText} />
+            <Text style={styles.imagePickerActionText}>{imageUri ? "Replace image" : "Browse storage"}</Text>
+          </View>
+        </Pressable>
+        <FieldError message={error} />
+      </View>
+    );
+  }
+
+  function FieldError({ message }: { message?: string }) {
+    return message ? <Text style={styles.fieldErrorText}>{message}</Text> : null;
   }
 
   function ProductCard({
@@ -861,6 +1033,59 @@ const createStyles = (colors: {
       color: colors.text,
       paddingHorizontal: 12,
       paddingVertical: 10,
+    },
+    inputError: {
+      borderColor: "#b91c1c",
+    },
+    fieldErrorText: {
+      color: "#b91c1c",
+      fontSize: 12,
+      fontWeight: "700",
+      marginTop: -5,
+    },
+    imagePickerBlock: {
+      gap: 8,
+    },
+    imagePicker: {
+      minHeight: 184,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surfaceAlt,
+      overflow: "hidden",
+      justifyContent: "center",
+    },
+    imagePreview: {
+      width: "100%",
+      height: 184,
+      backgroundColor: colors.surface,
+    },
+    imagePickerEmpty: {
+      minHeight: 184,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+    },
+    imagePickerText: {
+      color: colors.text,
+      fontWeight: "900",
+    },
+    imagePickerAction: {
+      position: "absolute",
+      right: 10,
+      bottom: 10,
+      minHeight: 36,
+      borderRadius: 10,
+      backgroundColor: colors.primary,
+      paddingHorizontal: 12,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+    },
+    imagePickerActionText: {
+      color: colors.primaryText,
+      fontWeight: "900",
+      fontSize: 12,
     },
     multilineInput: {
       minHeight: 84,

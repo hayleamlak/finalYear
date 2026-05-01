@@ -10,12 +10,17 @@ const listQuerySchema = z.object({
   search: z.string().optional(),
 });
 
+const productImageSchema = z.string().refine(
+  (value) => z.string().url().safeParse(value).success || /^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=]+$/.test(value),
+  "Image must be a URL or a base64 image selected from device storage",
+);
+
 const createProductSchema = z.object({
   product_name: z.string().min(2),
   farmer_id: z.string().min(1),
   price: z.coerce.number().positive(),
   stock: z.coerce.number().int().nonnegative(),
-  image: z.string().url(),
+  image: productImageSchema,
   product_detail: z.string().optional(),
 });
 

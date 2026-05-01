@@ -4,11 +4,16 @@ import { z } from "zod";
 import { prisma } from "../lib/prisma";
 import { ApiError } from "../middleware/errorHandler";
 
+const productImageSchema = z.string().refine(
+  (value) => z.string().url().safeParse(value).success || /^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=]+$/.test(value),
+  "Image must be a URL or a base64 image selected from device storage",
+);
+
 const updateProductSchema = z.object({
   product_name: z.string().trim().min(2).optional(),
   price: z.coerce.number().positive().optional(),
   stock: z.coerce.number().int().nonnegative().optional(),
-  image: z.string().url().optional(),
+  image: productImageSchema.optional(),
   product_detail: z.string().trim().nullable().optional(),
   status: z.enum(["ACTIVE", "INACTIVE", "PAUSED"]).optional(),
 });

@@ -10,7 +10,13 @@
     ],
     "plugins": [
       "expo-router",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow FYP Frontend to access your photos so you can upload product images."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
