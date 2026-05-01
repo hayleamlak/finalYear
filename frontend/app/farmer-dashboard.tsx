@@ -1,4 +1,4 @@
-import { useAuth, useUser } from "@clerk/clerk-expo";
+import { useAuth, useClerk, useUser } from "@clerk/clerk-expo";
 import * as ImagePicker from "expo-image-picker";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Redirect, useLocalSearchParams, usePathname, useRouter } from "expo-router";
@@ -16,7 +16,9 @@ import {
   View,
 } from "react-native";
 
+import { LanguageSwitcher } from "@/components/language/LanguageSwitcher";
 import { BottomNavBar } from "@/components/navigation/BottomNavBar";
+import { ThemeToggleButton } from "@/components/theme/ThemeToggleButton";
 import { useTheme } from "@/context/ThemeContext";
 import { apiFetch } from "@/lib/api";
 import {
@@ -55,6 +57,7 @@ export default function FarmerDashboardScreen() {
   const pathname = usePathname();
   const params = useLocalSearchParams<{ tab?: FarmerTab }>();
   const { isSignedIn, getToken, isLoaded } = useAuth();
+  const { signOut } = useClerk();
   const { user, isLoaded: isUserLoaded } = useUser();
   const { colors } = useTheme();
   const styles = createStyles(colors);
@@ -740,6 +743,37 @@ export default function FarmerDashboardScreen() {
 
                 <View style={styles.card}>
                   <View style={styles.sectionHeader}>
+                    <Text style={styles.cardTitle}>Settings</Text>
+                    <MaterialCommunityIcons name="tune-variant" size={18} color={colors.accent} />
+                  </View>
+                  <View style={styles.settingsRow}>
+                    <View style={styles.menuLeft}>
+                      <MaterialCommunityIcons name="translate" size={18} color={colors.text} />
+                      <Text style={styles.menuText}>Language</Text>
+                    </View>
+                    <LanguageSwitcher />
+                  </View>
+                  <View style={styles.menuRowNoBorder}>
+                    <View style={styles.menuLeft}>
+                      <MaterialCommunityIcons name="theme-light-dark" size={18} color={colors.text} />
+                      <Text style={styles.menuText}>Appearance</Text>
+                    </View>
+                    <ThemeToggleButton />
+                  </View>
+                  <Pressable
+                    style={styles.logoutButton}
+                    onPress={async () => {
+                      await signOut();
+                      router.replace("/sign-in");
+                    }}
+                  >
+                    <MaterialCommunityIcons name="logout" size={16} color={colors.primaryText} />
+                    <Text style={styles.logoutButtonText}>Logout</Text>
+                  </Pressable>
+                </View>
+
+                <View style={styles.card}>
+                  <View style={styles.sectionHeader}>
                     <Text style={styles.cardTitle}>Reviews and Ratings</Text>
                     <Text style={styles.badgeText}>{dashboard.summary.averageRating.toFixed(1)} / 5</Text>
                   </View>
@@ -1191,6 +1225,43 @@ const createStyles = (colors: {
     productTitle: {
       color: colors.text,
       fontWeight: "800",
+    },
+    menuLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    settingsRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 12,
+    },
+    menuRowNoBorder: {
+      paddingVertical: 8,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 8,
+    },
+    menuText: {
+      color: colors.text,
+      fontWeight: "700",
+    },
+    logoutButton: {
+      marginTop: 4,
+      borderRadius: 12,
+      backgroundColor: "#dc2626",
+      alignItems: "center",
+      justifyContent: "center",
+      minHeight: 44,
+      paddingHorizontal: 14,
+      flexDirection: "row",
+      gap: 8,
+    },
+    logoutButtonText: {
+      color: colors.primaryText,
+      fontWeight: "900",
     },
     productMeta: {
       color: colors.textSubtle,
