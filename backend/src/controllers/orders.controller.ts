@@ -242,7 +242,7 @@ export async function initializeChapaCheckout(req: Request, res: Response) {
 
   const txRef = `pay_${Date.now()}_${randomUUID().split("-")[0]}`;
 
-  const requestedReturnUrl = env.CHAPA_RETURN_URL ?? returnUrl;
+  const requestedReturnUrl = returnUrl;
   const returnUrlProtocol = new URL(requestedReturnUrl).protocol.toLowerCase();
   if (returnUrlProtocol !== "http:" && returnUrlProtocol !== "https:") {
     throw new ApiError(
@@ -309,55 +309,53 @@ export async function initializeChapaCheckout(req: Request, res: Response) {
     throw new ApiError(502, `Failed to initialize Chapa checkout${suffix}`);
   }
 
-  const { paymentId } = await prisma.$transaction(async (tx) => {
-    const address = await tx.address.create({
-      data: {
-        userId: req.user!.userId,
-        fullName,
-        phone,
-        addressLine1,
-        city,
-        region: city,
-        country: "Ethiopia",
-        addressLine2: note ?? null,
-      },
-    });
+  const address = await prisma.address.create({
+    data: {
+      userId: req.user!.userId,
+      fullName,
+      phone,
+      addressLine1,
+      city,
+      region: city,
+      country: "Ethiopia",
+      addressLine2: note ?? null,
+    },
+  });
 
-    const createdPayment = await tx.payment.create({
-      data: {
-        user_id: req.user!.userId,
-        amount,
-        method: "CARD",
-        status: "UNPAID",
-        provider: "CHAPA",
-        transactionRef: txRef,
-      },
-    });
+  const createdPayment = await prisma.payment.create({
+    data: {
+      user_id: req.user!.userId,
+      amount,
+      method: "CARD",
+      status: "UNPAID",
+      provider: "CHAPA",
+      transactionRef: txRef,
+    },
+  });
 
-    const order = await tx.order.create({
+  const order = await prisma.order.create({
+    data: {
+      user_id: req.user!.userId,
+      address_id: address.id,
+      payment_id: createdPayment.id,
+      status: "PENDING",
+    },
+  });
+
+  for (const item of items) {
+    const product = productById.get(item.product_id)!;
+    await prisma.orderItem.create({
       data: {
-        user_id: req.user!.userId,
-        address_id: address.id,
-        payment_id: createdPayment.id,
+        order_id: order.id,
+        product_id: item.product_id,
+        quantity: item.quantity,
+        price: product.price,
         status: "PENDING",
       },
     });
+  }
 
-    for (const item of items) {
-      const product = productById.get(item.product_id)!;
-      await tx.orderItem.create({
-        data: {
-          order_id: order.id,
-          product_id: item.product_id,
-          quantity: item.quantity,
-          price: product.price,
-          status: "PENDING",
-        },
-      });
-    }
-
-    return { paymentId: createdPayment.id };
-  });
+  const paymentId = createdPayment.id;
 
   res.status(200).json({
     success: true,
@@ -416,44 +414,43 @@ export async function verifyChapaCheckout(req: Request, res: Response) {
     throw new ApiError(400, "Unexpected transaction currency");
   }
 
-  const verificationResult = await prisma.$transaction(async (tx) => {
-    const markAsPaid = await tx.payment.updateMany({
-      where: {
-        id: payment.id,
-        status: "UNPAID",
-      },
-      data: {
-        status: "PAID",
-        paidAt: new Date(),
-      },
-    });
+  const markAsPaid = await prisma.payment.updateMany({
+    where: {
+      id: payment.id,
+      status: "UNPAID",
+    },
+    data: {
+      status: "PAID",
+      paidAt: new Date(),
+    },
+  });
 
-    const orders = await tx.order.findMany({
-      where: {
-        payment_id: payment.id,
-      },
-      include: {
-        items: true,
-      },
-    });
+  const orders = await prisma.order.findMany({
+    where: {
+      payment_id: payment.id,
+    },
+    include: {
+      items: true,
+    },
+  });
 
-    if (markAsPaid.count === 0) {
-      return { alreadyPaid: true, orderIds: orders.map((order) => order.id) };
-    }
-
+  let alreadyPaid = false;
+  if (markAsPaid.count === 0) {
+    alreadyPaid = true;
+  } else {
     for (const order of orders) {
-      await tx.order.update({
+      await prisma.order.update({
         where: { id: order.id },
         data: { status: "PAID" },
       });
 
-      await tx.orderItem.updateMany({
+      await prisma.orderItem.updateMany({
         where: { order_id: order.id },
         data: { status: "PAID" },
       });
 
       for (const item of order.items) {
-        const stockUpdate = await tx.product.updateMany({
+        const stockUpdate = await prisma.product.updateMany({
           where: {
             id: item.product_id,
             stock: {
@@ -472,16 +469,14 @@ export async function verifyChapaCheckout(req: Request, res: Response) {
         }
       }
     }
-
-    return { alreadyPaid: false, orderIds: orders.map((order) => order.id) };
-  });
+  }
 
   res.status(200).json({
     success: true,
     data: {
       payment_id: payment.id,
-      order_ids: verificationResult.orderIds,
-      message: verificationResult.alreadyPaid ? "Already verified" : "Payment verified",
+      order_ids: orders.map((order) => order.id),
+      message: alreadyPaid ? "Already verified" : "Payment verified",
     },
   });
 }

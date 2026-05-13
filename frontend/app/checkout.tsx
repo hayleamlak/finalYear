@@ -19,6 +19,7 @@ import { useCart } from "@/context/CartContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useToast } from "@/context/ToastContext";
 import { apiFetch } from "@/lib/api";
+import { env } from "@/lib/env";
 import { getRoleFromUser } from "@/lib/role";
 
 type PaymentMethod = "cash" | "card";
@@ -94,6 +95,7 @@ export default function CheckoutScreen() {
       }
 
       const appReturnUrl = Linking.createURL("/payment/chapa-return");
+      const returnUrl = `${env.apiUrl}/api/v1/orders/chapa/return`;
 
       const initResponse = await apiFetch<{
         success: boolean;
@@ -111,7 +113,7 @@ export default function CheckoutScreen() {
           addressLine1: address.trim(),
           city: city.trim(),
           note: note.trim() || undefined,
-          returnUrl: appReturnUrl,
+          returnUrl,
           appReturnUrl,
         }),
       });
