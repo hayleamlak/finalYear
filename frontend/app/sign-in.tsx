@@ -80,6 +80,9 @@ export default function SignInScreen() {
       const { createdSessionId, setActive: setActiveFromSSO } = await startSSOFlow({
         strategy: "oauth_google",
         redirectUrl: Linking.createURL("/"),
+        unsafeMetadata: {
+          role: selectedRole,
+        },
       });
 
       if (createdSessionId && setActiveFromSSO) {

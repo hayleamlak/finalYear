@@ -1,4 +1,5 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useAuth } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -8,12 +9,21 @@ type BottomNavBarProps = {
   currentPath: string;
 };
 
-function normalizePath(path: string) {
+function normalizePath(path: string, isSignedIn: boolean) {
   if (path.startsWith("/product/")) {
     return "/products";
   }
 
   if (path === "/sign-up") {
+    return "/sign-in";
+  }
+
+  // Normalize account routes based on auth state
+  if (isSignedIn && path === "/sign-in") {
+    return "/account";
+  }
+
+  if (!isSignedIn && path === "/account") {
     return "/sign-in";
   }
 
@@ -23,7 +33,8 @@ function normalizePath(path: string) {
 export function BottomNavBar({ currentPath }: BottomNavBarProps) {
   const router = useRouter();
   const { colors } = useTheme();
-  const activePath = normalizePath(currentPath);
+  const { isSignedIn } = useAuth();
+  const activePath = normalizePath(currentPath, isSignedIn);
 
   const styles = createStyles(colors);
 
@@ -46,13 +57,13 @@ export function BottomNavBar({ currentPath }: BottomNavBarProps) {
           />
           <Text style={[styles.label, activePath === "/cart" && styles.labelActive]}>Cart</Text>
         </Pressable>
-        <Pressable style={styles.item} onPress={() => router.push("/sign-in") }>
+        <Pressable style={styles.item} onPress={() => router.push(isSignedIn ? "/account" : "/sign-in") }>
           <MaterialCommunityIcons
             name="account-circle-outline"
             size={20}
-            color={activePath === "/sign-in" ? colors.accent : colors.textSubtle}
+            color={activePath === "/account" || activePath === "/sign-in" ? colors.accent : colors.textSubtle}
           />
-          <Text style={[styles.label, activePath === "/sign-in" && styles.labelActive]}>Account</Text>
+          <Text style={[styles.label, (activePath === "/account" || activePath === "/sign-in") && styles.labelActive]}>Account</Text>
         </Pressable>
       </View>
     </View>

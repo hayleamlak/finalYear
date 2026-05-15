@@ -26,6 +26,14 @@ function extractRole(payload: Record<string, unknown>): string {
     }
   }
 
+  const unsafeMetadata = payload.unsafe_metadata;
+  if (unsafeMetadata && typeof unsafeMetadata === "object") {
+    const role = (unsafeMetadata as Record<string, unknown>).role;
+    if (typeof role === "string" && role.length > 0) {
+      return role;
+    }
+  }
+
   return "BUYER";
 }
 

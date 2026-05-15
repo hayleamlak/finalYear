@@ -56,11 +56,13 @@ export default clerkMiddleware(async (auth, req) => {
     return NextResponse.redirect(new URL("/sign-in", req.url));
   }
 
-  const role = sessionClaims?.metadata?.role as
-    | "admin"
-    | "farmer"
-    | "buyer"
-    | undefined;
+  const role =
+    (sessionClaims as { metadata?: { role?: "admin" | "farmer" | "buyer" }; public_metadata?: { role?: "admin" | "farmer" | "buyer" }; unsafe_metadata?: { role?: "admin" | "farmer" | "buyer" } })
+      ?.metadata?.role ??
+    (sessionClaims as { metadata?: { role?: "admin" | "farmer" | "buyer" }; public_metadata?: { role?: "admin" | "farmer" | "buyer" }; unsafe_metadata?: { role?: "admin" | "farmer" | "buyer" } })
+      ?.public_metadata?.role ??
+    (sessionClaims as { metadata?: { role?: "admin" | "farmer" | "buyer" }; public_metadata?: { role?: "admin" | "farmer" | "buyer" }; unsafe_metadata?: { role?: "admin" | "farmer" | "buyer" } })
+      ?.unsafe_metadata?.role;
 
   if (isAdminRoute(req) && role !== "admin") {
     return NextResponse.redirect(new URL("/", req.url));
