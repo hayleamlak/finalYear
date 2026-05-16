@@ -42,6 +42,7 @@ export function BottomNavBar({ currentPath, accountActive, onAccountPress }: Bot
   const activePath = normalizePath(currentPath, !!isSignedIn);
   const accountHref = isSignedIn && isFarmer ? "/farmer-dashboard?tab=profile" : isSignedIn ? "/account" : "/sign-in";
   const isAccountActive = accountActive ?? (activePath === "/account" || activePath === "/sign-in" || (isFarmer && activePath === "/farmer-dashboard"));
+  const isProductsTabActive = isFarmer && activePath === "/farmer-dashboard";
 
   const styles = createStyles(colors);
 
@@ -56,14 +57,25 @@ export function BottomNavBar({ currentPath, accountActive, onAccountPress }: Bot
           />
           <Text style={[styles.label, activePath === "/products" && styles.labelActive]}>Products</Text>
         </Pressable>
-        <Pressable style={styles.item} onPress={() => router.push("/cart") }>
-          <MaterialCommunityIcons
-            name="cart-outline"
-            size={20}
-            color={activePath === "/cart" ? colors.accent : colors.textSubtle}
-          />
-          <Text style={[styles.label, activePath === "/cart" && styles.labelActive]}>Cart</Text>
-        </Pressable>
+        {isFarmer ? (
+          <Pressable style={styles.item} onPress={() => router.push("/farmer-dashboard?tab=products") }>
+            <MaterialCommunityIcons
+              name="plus-circle-outline"
+              size={20}
+              color={isProductsTabActive ? colors.accent : colors.textSubtle}
+            />
+            <Text style={[styles.label, isProductsTabActive && styles.labelActive]}>Add Product</Text>
+          </Pressable>
+        ) : (
+          <Pressable style={styles.item} onPress={() => router.push("/cart") }>
+            <MaterialCommunityIcons
+              name="cart-outline"
+              size={20}
+              color={activePath === "/cart" ? colors.accent : colors.textSubtle}
+            />
+            <Text style={[styles.label, activePath === "/cart" && styles.labelActive]}>Cart</Text>
+          </Pressable>
+        )}
         <Pressable style={styles.item} onPress={() => {
           if (onAccountPress) {
             onAccountPress();
