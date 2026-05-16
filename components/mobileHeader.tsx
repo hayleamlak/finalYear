@@ -10,11 +10,10 @@ import LoaderBtn from "./loaderBtn";
 
 export default function MobileHeader() {
 
-  const {user} = useUser()
-  const role = user?.publicMetadata?.role;
+  const { user } = useUser();
+  const role = user?.publicMetadata?.role ?? user?.unsafeMetadata?.role;
 
-  let orderLink = "";
-  (role === "admin" || role === "ADMIN") ?orderLink = `${role}/order` : orderLink = `${role}`;
+  const orderLink = role === "admin" || role === "ADMIN" ? `${role}/order` : `${role}`;
 
 
   const headerLinks = [
@@ -31,10 +30,15 @@ export default function MobileHeader() {
   ];
   
   return (
-    <div className="min-[1317px]:hidden bg-black text-white px-6 py-4 z-10 border-t border-gray-700 animate-slideDown">
-      <nav className="flex flex-col gap-4 text-lg font-medium justify-start items-start">
+    <div className="min-[1317px]:hidden z-10 mt-3 animate-in slide-in-from-top-3 rounded-2xl border border-white/35 bg-background/80 px-4 py-4 text-foreground shadow-[0_25px_45px_-35px_var(--foreground)] backdrop-blur-xl dark:border-white/10 dark:bg-card/65">
+      <nav className="flex flex-col items-start justify-start gap-3 text-base font-semibold">
         {headerLinks.map((item) => (
-          <LoaderBtn key={item.key} btnName={item.name} linkTo={item.link} className="hover:text-green-500 transition  bg-transparent dark:text-white font-bold border-b-1 border-white"/>
+          <LoaderBtn
+            key={item.key}
+            btnName={item.name}
+            linkTo={item.link}
+            className="w-full justify-start rounded-xl border border-border/60 bg-card/70 px-3 py-2 text-left text-foreground transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
+          />
         ))}
 
         {/* USER SECTION */}
@@ -44,7 +48,7 @@ export default function MobileHeader() {
 
         <SignedOut>
           <SignInButton>
-            <span className="text-green-500">Login</span>
+            <span className="text-primary">Login</span>
           </SignInButton>
         </SignedOut>
         <ThemeToggle />

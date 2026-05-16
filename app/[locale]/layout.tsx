@@ -5,7 +5,7 @@
 // new
 
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Sora, Space_Grotesk } from "next/font/google";
 import { Toaster } from "sonner";
 
 import { ClerkProvider } from "@clerk/nextjs";
@@ -24,12 +24,12 @@ import { auth } from "@clerk/nextjs/server";
 import { trackUserSession } from "./actions/sessionTrack";
 import { setUserDefaultRole } from "./actions/general";
 
-const geistSans = Geist({
+const sora = Sora({
   variable: "--font-geist-sans",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
+const spaceGrotesk = Space_Grotesk({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
@@ -80,7 +80,7 @@ export default async function RootLayout({
     <ClerkProvider>
      <html lang={locale}>
         <body
-          className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+          className={`${sora.variable} ${spaceGrotesk.variable} antialiased`}
         >
           <NextIntlClientProvider locale={locale} messages={messages}>
             {/* PopUp notification */}

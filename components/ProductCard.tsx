@@ -7,20 +7,20 @@ interface ProductCardProps {
 
 function ProductCard({ product }: ProductCardProps) {
   return (
-    <div className="border rounded-xl p-4 shadow-sm">
+    <div className="surface-elevated overflow-hidden p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_28px_45px_-34px_var(--foreground)]">
       <img
         src={product.image}
         alt={product.product_name}
-        className="h-40 w-full object-cover rounded-lg"
+        className="h-44 w-full rounded-xl object-cover"
       />
 
       <div className="mt-3">
-        <h3 className="font-semibold">{product.product_name}</h3>
-        <p className="text-sm text-gray-600">
+        <h3 className="font-semibold text-foreground">{product.product_name}</h3>
+        <p className="text-sm text-muted-foreground">
           {product.product_detail}
         </p>
 
-        <div className="mt-2 font-bold text-green-600">
+        <div className="mt-2 font-bold text-primary">
           {product.price} ETB
         </div>
       </div>

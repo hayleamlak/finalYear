@@ -150,12 +150,12 @@ export default function SidebarContent({ role, userId }: Props) {
       : sidebarLinks;
 
   return (
-    <aside className="fixed h-screen w-64 border-r bg-white dark:bg-zinc-900 dark:border-zinc-800 px-5 py-6 shadow-sm">
+    <aside className="fixed h-screen w-64 border-r border-border/70 bg-card/80 px-5 py-6 shadow-[0_22px_45px_-35px_var(--foreground)] backdrop-blur-xl">
       
       {/* Logo */}
       <div className="mb-8">
-        <div className="rounded-xl bg-green-700 dark:bg-green-600 text-center py-3 font-bold text-xl text-white tracking-wide shadow-md flex items-center gap-1">
-        <Coffee size={40} strokeWidth={2} className="text-amber-700 fill-amber-800" /> Coffee
+        <div className="agri-gradient flex items-center gap-1 rounded-2xl py-3 text-center text-xl font-bold tracking-wide text-white shadow-lg">
+        <Coffee size={40} strokeWidth={2} className="fill-amber-100 text-amber-50" /> Coffee
         </div>
       </div>
 
@@ -163,7 +163,7 @@ export default function SidebarContent({ role, userId }: Props) {
         <div key={section.key} className="mb-8">
 
           {/* Section label */}
-          <h1 className="text-xs font-semibold tracking-wider text-gray-500 dark:text-gray-400 mb-3 uppercase">
+          <h1 className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
             {section.label}
           </h1>
 
@@ -173,16 +173,8 @@ export default function SidebarContent({ role, userId }: Props) {
                 key={link.key2}
                 href={link.link}
                 className={cn(
-                  "flex items-center rounded-lg px-4 py-3 text-sm font-medium transition-all duration-200",
-                  
-                  /* light mode */
-                  "text-gray-700 hover:bg-green-100",
-
-                  /* dark mode */
-                  "dark:text-gray-300 dark:hover:bg-green-900/40",
-
-                  /* hover */
-                  "hover:text-green-800 dark:hover:text-green-400"
+                  "flex items-center rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-300",
+                  "border border-transparent text-foreground/90 hover:border-primary/35 hover:bg-primary/12 hover:text-primary"
                 )}
               >
                 {link.name}

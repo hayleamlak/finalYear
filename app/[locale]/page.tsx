@@ -61,7 +61,7 @@ export default async function Home() {
   const products = productsData.data ?? [];
 
   // Fetch reviews for each product
-  const reviewsMap: Record<string, any[]> = {};
+  const reviewsMap: Record<string, Awaited<ReturnType<typeof getReviewsByProductId>>> = {};
 
   for (const product of products) {
     const reviews = await getReviewsByProductId(product.id);
@@ -75,7 +75,7 @@ export default async function Home() {
   const unread = await getAllUnreadNotifications();
 
   return (
-    <div className="pt-2">
+    <div className="pt-24 md:pt-28">
       <Header notification={unread?.data?.length} cartQuantity={cartQuantity} />
       {/* <HomePage products={productsData.data ?? []} role={role || "/"} /> */}
       <HomePage

@@ -29,29 +29,26 @@ export async function FarmerSidebar() {
       : [{ name: ts("dashboard"), link: "/admin" }];
 
   return (
-    <div className="flex h-full z-50 bg-gray-900 flex-col p-4 fixed">
-      {/* LOGO */}
-      <div className="mb-6 rounded-lg bg-green-800 py-3 text-center text-xl font-bold text-green-200 flex items-center">
+    <div className="glass-panel fixed z-50 flex h-full flex-col p-4">
+      <div className="agri-gradient mb-6 flex items-center rounded-2xl py-3 text-center text-xl font-bold text-white">
        <Coffee /> Green Coffee
       </div>
 
-      {/* LINKS */}
       <nav className="flex flex-col gap-2">
         {links.map((item) => (
           <Link
             key={item.name}
             href={item.link}
             className={cn(
-              "rounded-lg z-0 px-4 py-3 text-sm font-semibold transition",
-              "hover:bg-green-700 hover:text-white",
-              "bg-gray-100 text-gray-800"
+              "z-0 rounded-xl border border-transparent px-4 py-3 text-sm font-semibold transition-all duration-300",
+              "bg-card/70 text-foreground hover:border-primary/35 hover:bg-primary/12 hover:text-primary"
             )}
           >
             {item.name}
           </Link>
         ))}
-        <div className=" border-t border-gray-700 mt-4 pt-4 bottom-0">  
-            <h2 className="text-sm font-semibold mt-4 mb-2 text-gray-300 botto-0">{tf("newProduct")}</h2>
+        <div className="mt-4 border-t border-border pt-4">  
+            <h2 className="mb-2 mt-4 text-sm font-semibold text-muted-foreground">{tf("newProduct")}</h2>
         </div>
         <AddProduct />
       </nav>

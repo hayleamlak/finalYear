@@ -14,8 +14,6 @@ import { useTheme } from "./checkTheme";
 import LoaderBtn from "./loaderBtn";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import ReviewDialog from "./review/reviewDialog";
-import { Volume2 } from "lucide-react";
 
 interface Product {
   id: string;
@@ -152,28 +150,6 @@ export default function ProductsPage({
     router.refresh();
   };
 
-  const handleBuyNow = (product: Product) => {
-    alert(
-      language === "ENGLISH"
-        ? `Redirecting to checkout for ${product.product_name}`
-        : language === "AFAN_OROMO"
-        ? `${product.product_name} gara kaffaltii deemaa jirta`
-        : `${product.product_name} ወደ ክፍያ ተመልሷል`
-    );
-  };
-
-
-
-    /* =========================
-     VOICE
-  ========================== */
-  const speak = (text: string) => {
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = "en-US";
-    speechSynthesis.speak(utterance);
-  };
-
-
   /* =====================
      UI
   ====================== */
@@ -181,11 +157,8 @@ export default function ProductsPage({
   return (
     <div
       className="
-        min-h-screen mt-5 px-4 md:px-12 py-16
-        bg-gradient-to-b 
-        from-[#faf7f2] to-[#f4efe7]
-        dark:from-[#1a120b] dark:to-[#0f0a06]
-        text-[#2d1b0f] dark:text-[#f5f5dc]
+        agri-hero min-h-screen mt-5 px-4 py-16 md:px-12
+        text-foreground
         transition-colors duration-500
       "
     >
@@ -203,20 +176,18 @@ export default function ProductsPage({
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="
-            w-full max-w-xl px-5 py-3 rounded-2xl
-            bg-white dark:bg-[#2b1c12]
-            border border-gray-300 dark:border-[#3c2a21]
-            text-black dark:text-[#f5f5dc]
-            placeholder:text-gray-500 dark:placeholder:text-gray-400
-            shadow-md focus:outline-none
-            focus:ring-2 focus:ring-green-600
+            w-full max-w-xl rounded-2xl border border-border/70
+            bg-background/75 px-5 py-3 text-foreground
+            placeholder:text-muted-foreground
+            shadow-[0_15px_30px_-25px_var(--foreground)] focus:outline-none
+            focus:ring-2 focus:ring-primary/50
             transition-colors duration-300
           "
         />
       </div>
   
       {filteredProducts.length === 0 && (
-        <p className="text-center text-gray-600 dark:text-gray-400 mb-10">
+        <p className="mb-10 text-center text-muted-foreground">
           No products found.
         </p>
       )}
@@ -234,15 +205,12 @@ export default function ProductsPage({
               <Card
                 className={`
                   h-full flex flex-col
-                  rounded-3xl overflow-hidden
-                  shadow-md hover:shadow-xl
-                  border border-gray-200 dark:border-[#3c2a21]
-                  bg-white dark:bg-[#1f140d]
+                  rounded-3xl overflow-hidden surface-elevated
                   transition-all duration-300
                   ${
                     product.stock === 0
-                      ? "opacity-80 border-red-400 dark:border-red-600"
-                      : "hover:border-green-600"
+                      ? "opacity-80 border-red-400/70 dark:border-red-600"
+                      : "hover:border-primary/50"
                   }
                 `}
               >
@@ -262,7 +230,7 @@ export default function ProductsPage({
                     {highlightText(product.product_name)}
                   </h2>
     
-                  <p className="text-xl font-bold text-green-700 dark:text-green-400">
+                  <p className="text-xl font-bold text-primary">
                     {product.price} ETB
                   </p>
     
@@ -277,15 +245,12 @@ export default function ProductsPage({
                         handleQuantityChange(product.id, Number(e.target.value))
                       }
                       className="
-                        w-20 p-1 rounded-md text-center
-                        bg-white dark:bg-[#2b1c12]
-                        border border-gray-300 dark:border-[#3c2a21]
-                        text-black dark:text-[#f5f5dc]
+                        w-20 rounded-xl border border-border/70 bg-background/75 p-1 text-center text-foreground
                         transition-colors
                       "
                     />
     
-                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                    <span className="text-sm text-muted-foreground">
                       {product.stock === 0
                         ? "Finished Product!"
                         : language === "ENGLISH"
@@ -305,10 +270,8 @@ export default function ProductsPage({
                     <Button
                       className="
                         flex-1 rounded-xl
-                        bg-[#3c2a21] text-white
-                        hover:bg-[#2b1c12]
-                        dark:bg-[#6f4e37]
-                        dark:hover:bg-[#5a3d2b]
+                        agri-gradient text-white
+                        hover:brightness-110
                         transition-colors
                       "
                       onClick={() => handleAddToCart(product)}

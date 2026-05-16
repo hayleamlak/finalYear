@@ -62,13 +62,17 @@ export const dynamic = "force-dynamic";
 async function AdminLayout({ children }: { children: React.ReactNode }) {
   const { userId, sessionClaims } = await auth();
   const role = await getRole();
-  const resolvedRole = !role || role === "BUYER" ? "user" : role;
+  const claimRole =
+    sessionClaims?.metadata?.role ??
+    sessionClaims?.public_metadata?.role ??
+    sessionClaims?.unsafe_metadata?.role;
+  const resolvedRole = !role || role === "BUYER" ? claimRole || "user" : role;
 
   return (
-    <div className="flex min-h-screen transition-colors duration-500 bg-gray-100 dark:bg-[#121212]">
+    <div className="agri-hero flex min-h-screen transition-colors duration-500">
 
       {/* Desktop Sidebar */}
-      <div className="hidden min-[1291px]:flex w-64 border-r border-gray-200 dark:border-[#3c2a21] shadow-sm transition-colors">
+      <div className="hidden min-[1291px]:flex w-64 border-r border-border/70 bg-card/75 shadow-[0_22px_45px_-35px_var(--foreground)] backdrop-blur-xl transition-colors">
         <SidebarContent role={resolvedRole} userId={userId} />
       </div>
 
@@ -76,7 +80,7 @@ async function AdminLayout({ children }: { children: React.ReactNode }) {
       <div className="flex flex-col flex-1">
 
         {/* Header */}
-        <div className="w-full sticky top-0 z-40 flex items-center px-4 border-b bg-white dark:bg-[#1f140d] dark:border-[#3c2a21] transition-colors">
+        <div className="sticky top-0 z-40 flex w-full items-center px-3 py-2 transition-colors md:px-4 md:py-3">
           <MobileSidebar role={resolvedRole} userId={userId} />
           <DashboardHeader role={resolvedRole} />
         </div>

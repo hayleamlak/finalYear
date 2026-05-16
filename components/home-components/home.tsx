@@ -12,16 +12,23 @@ import { useState, useMemo } from "react";
 import { addToCart } from "@/utils/services/cartItem";
 import { ShoppingCart, ArrowRight, Coffee, Volume2 } from "lucide-react";
 import { toast } from "sonner";
-import { useTheme } from "../checkTheme";
-import { Product, Review } from "@prisma/client";
+import { Product } from "@prisma/client";
 import LoaderBtn from "../loaderBtn";
 import { useTranslations } from "next-intl";
 import ReviewCard from "../review/ReviewCard";
 
+type ProductReview = {
+  id: string;
+  name: string;
+  date: string;
+  comment: string | null;
+  rating: number;
+};
+
 interface roleProps {
   role: "ADMIN" | "BUYER" | "SELLER" | "LAB_TECHNICIAN" | "CASHIER" | "/";
   products: Product[];
-  reviewData?: Record<string, any[]>;
+  reviewData?: Record<string, ProductReview[]>;
 }
 
 const container = {
@@ -158,24 +165,24 @@ export default function HomePage({ role, products, reviewData }: roleProps) {
 
   return (
     <div
-      className="min-h-screen
-    bg-gradient-to-b
-    from-[#faf7f2] to-[#f4efe7]
-    dark:from-[#1a120b] dark:to-[#0f0a06]
-    text-[#2d1b0f] dark:text-[#f5f5dc]
-    transition-colors duration-500"
+      className="agri-hero min-h-screen text-foreground transition-colors duration-500"
     >
       {/* HERO */}
       <motion.section
-        className="relative min-h-[90vh] flex flex-col justify-center items-center text-center bg-[url('/cup_coffee.png')] bg-cover bg-center bg-fixed shadow-inner"
+        className="relative flex min-h-[90vh] flex-col items-center justify-center overflow-hidden text-center shadow-inner"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 1 }}
       >
-        <div className="absolute inset-0 bg-black/60 dark:bg-black/75" />
+        <img
+          src="/cup_coffee.png"
+          alt="Premium coffee hero"
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-br from-black/55 via-black/45 to-primary/35" />
 
         <motion.h1
-          className="relative text-5xl md:text-7xl font-extrabold tracking-wide text-green-800 dark:text-green-400 transition-colors"
+          className="relative px-4 text-5xl font-extrabold tracking-tight text-white md:text-7xl"
           initial={{ y: -40, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
         >
@@ -183,10 +190,7 @@ export default function HomePage({ role, products, reviewData }: roleProps) {
         </motion.h1>
 
         <motion.p
-          className="relative mt-4 text-2xl max-w-2xl
-         bg-white/90 dark:bg-[#2b1c12]/90
-         text-green-700 dark:text-green-300
-         p-3 rounded-xl backdrop-blur-md transition-colors"
+          className="glass-panel relative mt-4 max-w-3xl rounded-2xl p-4 text-lg text-white/95 md:text-2xl"
           initial={{ y: 40, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
         >
@@ -197,7 +201,7 @@ export default function HomePage({ role, products, reviewData }: roleProps) {
           onClick={handleButton}
           whileHover={{ scale: 1.08 }}
           whileTap={{ scale: 0.97 }}
-          className="relative mt-10 px-8 py-4 bg-[#6A4325]/90 hover:bg-[#6A4325] text-white font-semibold rounded-xl shadow-xl flex items-center gap-2"
+          className="agri-gradient relative mt-10 flex items-center gap-2 rounded-xl px-8 py-4 font-semibold text-white shadow-xl transition duration-300 hover:scale-[1.02] hover:brightness-110"
         >
           {user ? tc("shopnnowbtn") : tc("signoption")}
           <ArrowRight />
@@ -208,7 +212,7 @@ export default function HomePage({ role, products, reviewData }: roleProps) {
             {
               role.toUpperCase() === "BUYER" && (
                 <LoaderBtn
-                className="relative mt-3 bg-transparent hover:text-black text-white hover:underline"
+                className="relative mt-3 bg-transparent text-white hover:text-white/80 hover:underline"
                 linkTo={`/${role}`}
                 btnName={"Go to Orders"}
               />
@@ -217,7 +221,7 @@ export default function HomePage({ role, products, reviewData }: roleProps) {
             {
               role.toUpperCase() !== "BUYER" && (
                 <LoaderBtn
-                className="relative mt-3 bg-transparent hover:text-black text-white hover:underline"
+                className="relative mt-3 bg-transparent text-white hover:text-white/80 hover:underline"
                 linkTo={`/${role}`}
                 btnName={"Go to Orders"}
               />
@@ -228,7 +232,7 @@ export default function HomePage({ role, products, reviewData }: roleProps) {
       </motion.section>
 
       <button
-        className="p-3 bottom-7 right-0  fixed z-50 bg-green-800 rounded-2xl w-25 flex items-center justify-center m-2 cursor-pointer hover:bg-green-500"
+        className="floating-soft fixed bottom-7 right-3 z-50 flex w-12 items-center justify-center rounded-2xl bg-primary p-3 text-primary-foreground shadow-xl transition-colors hover:bg-primary/85"
         onClick={() => speak(platformDescription)}
       >
         <Volume2 />
@@ -239,26 +243,26 @@ export default function HomePage({ role, products, reviewData }: roleProps) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 1 }}
-          className=" p-1 flex justify-around"
+          className="flex justify-around p-1"
         >
           <Link
             href="/about"
-            className="relative active:bg-[#6A4325]/30 cursor-pointer mt-10 px-8 py-4 bg-[#6A4325]/90 hover:bg-[#6A4325] text-white font-semibold rounded-xl shadow-xl flex items-center gap-2"
+            className="agri-gradient relative mt-10 flex cursor-pointer items-center gap-2 rounded-xl px-8 py-4 font-semibold text-white shadow-xl"
           >
             About Us
           </Link>
           <Link
             href="/contact"
-            className="relative cursor-pointer mt-10 px-8 py-4 bg-[#6A4325]/90 active:bg-[#6A4325]/30 hover:bg-[#6A4325] text-white font-semibold rounded-xl shadow-xl flex items-center gap-2"
+            className="agri-gradient relative mt-10 flex cursor-pointer items-center gap-2 rounded-xl px-8 py-4 font-semibold text-white shadow-xl"
           >
             Contact Us
           </Link>
         </motion.div>
       )}
       {/* FEATURED */}
-      <section className="py-20 px-6 md:px-20">
-        <h2 className="text-4xl font-bold text-center text-[#4b2e16] dark:text-[#e6ccb2] transition-colors gap-2 flex items-center justify-center">
-          <Coffee size={60} className=" fill-green-900" />
+      <section className="px-6 py-20 md:px-20">
+        <h2 className="mb-8 flex items-center justify-center gap-2 text-center text-4xl font-bold text-foreground transition-colors">
+          <Coffee size={60} className="fill-primary text-primary" />
           {tc("featured")}
         </h2>
 
@@ -269,20 +273,13 @@ export default function HomePage({ role, products, reviewData }: roleProps) {
             placeholder={`${tf("search")}`}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full max-w-xl px-5 py-3 rounded-2xl
-bg-white dark:bg-[#2b1c12]
-border border-gray-300 dark:border-[#3c2a21]
-text-black dark:text-[#f5f5dc]
-placeholder:text-gray-500 dark:placeholder:text-gray-400
-shadow-md focus:outline-none
-focus:ring-2 focus:ring-green-600
-transition-colors"
+            className="w-full max-w-xl rounded-2xl border border-border/70 bg-background/75 px-5 py-3 text-foreground placeholder:text-muted-foreground shadow-[0_16px_30px_-24px_var(--foreground)] focus:outline-none focus:ring-2 focus:ring-primary/45 transition-colors"
           />
         </div>
 
         {/* EMPTY STATE */}
         {filteredProducts.length === 0 && (
-          <p className="text-center text-gray-600 mb-10">No products found.</p>
+          <p className="mb-10 text-center text-muted-foreground">No products found.</p>
         )}
 
         {/* PRODUCT GRID */}
@@ -296,15 +293,7 @@ transition-colors"
             <motion.div key={product.id} variants={item}>
               {product.status !== "INACTIVE" && (
                 <Card
-                  className="
-  rounded-3xl
-  shadow-md hover:shadow-xl
-  border border-gray-200 dark:border-[#3c2a21]
-  hover:border-green-500
-  transition-all duration-300
-  bg-white dark:bg-[#1f140d]
-  overflow-hidden flex flex-col
-  transition-colors  h-full"
+                  className="h-full overflow-hidden rounded-3xl border border-border/70 bg-card/85 shadow-[0_20px_40px_-30px_var(--foreground)] transition-all duration-300 hover:-translate-y-1 hover:border-primary/45 hover:shadow-[0_30px_55px_-35px_var(--foreground)]"
                 >
                   {/* IMAGE */}
                   <div className="relative group">
@@ -320,7 +309,7 @@ transition-colors"
                     <Button
                       onClick={() => handleBuyNow(product.id)}
                       variant="secondary"
-                      className="absolute bottom-3 right-3 bg-blue-700 text-white hover:bg-blue-600"
+                      className="absolute bottom-3 right-3 rounded-xl border-none bg-accent text-accent-foreground hover:bg-accent/85"
                       disabled={product.stock === 0}
                     >
                       {tb("buy")}
@@ -333,10 +322,10 @@ transition-colors"
                       {product.product_name}
                     </h2>
 
-                    <p className="text-2xl font-bold text-green-700">
+                    <p className="text-2xl font-bold text-primary">
                       {product.price} ETB
                     </p>
-                    <p className="text-lg font-semibold text-gray-600 dark:text-gray-300">
+                    <p className="text-lg font-semibold text-muted-foreground">
                       <i>{product.product_detail}</i>
                     </p>
 
@@ -344,7 +333,7 @@ transition-colors"
                       <Button
                         onClick={() => decreaseQty(product.id)}
                         size="sm"
-                        className="bg-red-700 text-white"
+                        className="rounded-lg bg-red-600 text-white hover:bg-red-500"
                       >
                         -
                       </Button>
@@ -357,13 +346,13 @@ transition-colors"
                         }
                         size="sm"
                         disabled={product.stock === 0}
-                        className="bg-green-700 text-white"
+                        className="rounded-lg bg-primary text-primary-foreground hover:bg-primary/85"
                       >
                         +
                       </Button>
                     </div>
 
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                    <p className="text-sm text-muted-foreground">
                       {product.stock > 0
                         ? `${product.stock} Kg left in stock`
                         : "Out of stock"}
@@ -371,7 +360,7 @@ transition-colors"
 
                     {reviewData && reviewData?.[product.id]?.length > 0 && (
                       <div className="mt-4">
-                        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                        <h3 className="mb-2 text-sm font-semibold text-foreground/80">
                           Reviews ({reviewData[product.id].length})
                         </h3>
 
@@ -396,11 +385,7 @@ transition-colors"
                     <Button
                       onClick={() => handleAddToCart(product.id)}
                       disabled={loadingId === product.id || product.stock === 0}
-                      className="w-full flex items-center justify-center gap-2 bg-[#3c2a21] text-white
-  hover:bg-[#2b1c12]
-  dark:bg-[#6f4e37]
-  dark:hover:bg-[#5a3d2b]
-  transition-colors"
+                      className="agri-gradient w-full text-white transition duration-300 hover:brightness-110"
                     >
                       <ShoppingCart size={18} />
                       {loadingId === product.id ? tc("adding") : tb("add")}
@@ -410,18 +395,14 @@ transition-colors"
                       <LoaderBtn
                         disable={product.stock === 0}
                         btnName={tb("detail")}
-                        className="w-full bg-green-600 text-white hover:bg-green-700"
+                        className="w-full bg-primary text-primary-foreground hover:bg-primary/85"
                       />
                     </Link>
                     <Button
                       onClick={() =>
                         speakProductDetail(product?.product_detail || "")
                       }
-                      className="w-full flex items-center justify-center gap-2 bg-[#3c2a29] text-white
-  hover:bg-[#2b1c12]
-  dark:bg-[#6f4e37]
-  dark:hover:bg-[#5a3d2b]
-  transition-colors"
+                      className="w-full gap-2 rounded-xl bg-card text-foreground transition-colors hover:bg-primary/12"
                     >
                       <Volume2 />
                     </Button>

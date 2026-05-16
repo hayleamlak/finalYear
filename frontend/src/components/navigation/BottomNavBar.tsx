@@ -1,12 +1,15 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useAuth } from "@clerk/clerk-expo";
+import { useAuth, useUser } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useTheme } from "@/context/ThemeContext";
+import { getRoleFromUser } from "@/lib/role";
 
 type BottomNavBarProps = {
   currentPath: string;
+  accountActive?: boolean;
+  onAccountPress?: () => void;
 };
 
 function normalizePath(path: string, isSignedIn: boolean) {
@@ -30,11 +33,15 @@ function normalizePath(path: string, isSignedIn: boolean) {
   return path;
 }
 
-export function BottomNavBar({ currentPath }: BottomNavBarProps) {
+export function BottomNavBar({ currentPath, accountActive, onAccountPress }: BottomNavBarProps) {
   const router = useRouter();
   const { colors } = useTheme();
   const { isSignedIn } = useAuth();
-  const activePath = normalizePath(currentPath, isSignedIn);
+  const { user, isLoaded: isUserLoaded } = useUser();
+  const isFarmer = isUserLoaded && getRoleFromUser(user) === "farmer";
+  const activePath = normalizePath(currentPath, !!isSignedIn);
+  const accountHref = isSignedIn && isFarmer ? "/farmer-dashboard?tab=profile" : isSignedIn ? "/account" : "/sign-in";
+  const isAccountActive = accountActive ?? (activePath === "/account" || activePath === "/sign-in" || (isFarmer && activePath === "/farmer-dashboard"));
 
   const styles = createStyles(colors);
 
@@ -57,13 +64,20 @@ export function BottomNavBar({ currentPath }: BottomNavBarProps) {
           />
           <Text style={[styles.label, activePath === "/cart" && styles.labelActive]}>Cart</Text>
         </Pressable>
-        <Pressable style={styles.item} onPress={() => router.push(isSignedIn ? "/account" : "/sign-in") }>
+        <Pressable style={styles.item} onPress={() => {
+          if (onAccountPress) {
+            onAccountPress();
+            return;
+          }
+
+          router.push(accountHref);
+        } }>
           <MaterialCommunityIcons
             name="account-circle-outline"
             size={20}
-            color={activePath === "/account" || activePath === "/sign-in" ? colors.accent : colors.textSubtle}
+            color={isAccountActive ? colors.accent : colors.textSubtle}
           />
-          <Text style={[styles.label, (activePath === "/account" || activePath === "/sign-in") && styles.labelActive]}>Account</Text>
+          <Text style={[styles.label, isAccountActive && styles.labelActive]}>Account</Text>
         </Pressable>
       </View>
     </View>

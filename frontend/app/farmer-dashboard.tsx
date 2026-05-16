@@ -799,7 +799,11 @@ export default function FarmerDashboardScreen() {
           </>
         ) : null}
       </ScrollView>
-      <BottomNavBar currentPath={pathname} />
+      <BottomNavBar
+        currentPath={pathname}
+        accountActive={activeTab === "profile"}
+        onAccountPress={() => setActiveTab("profile")}
+      />
     </SafeAreaView>
   );
 

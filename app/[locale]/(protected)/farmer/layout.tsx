@@ -9,34 +9,32 @@ import { auth } from "@clerk/nextjs/server";
 async function AdminLayout({ children }: { children: React.ReactNode }) {
   const { sessionClaims, userId } = await auth();
 
-  let role = sessionClaims?.metadata?.role;
+  let role =
+    sessionClaims?.metadata?.role ??
+    sessionClaims?.public_metadata?.role ??
+    sessionClaims?.unsafe_metadata?.role;
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground transition-colors">
+    <div className="agri-hero flex min-h-screen text-foreground transition-colors">
       
-      {/* ================= DESKTOP SIDEBAR ================= */}
-      <aside className="hidden md:flex w-64 flex-shrink-0 border-r border-border bg-card">
+      <aside className="hidden w-64 flex-shrink-0 border-r border-border/70 bg-card/75 backdrop-blur-xl md:flex">
         <FarmerSidebar  />
       </aside>
 
-      {/* ================= MAIN AREA ================= */}
       <div className="flex flex-1 flex-col">
 
-        {/* ================= HEADER ================= */}
-        <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md">
+        <header className="sticky top-0 z-40 px-3 py-2 md:px-4 md:py-3">
           {role && <DashboardHeader role={role} />}
         </header>
 
-        {/* ================= CONTENT ================= */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6">
           <div className="mx-auto max-w-7xl">
             {children}
           </div>
         </main>
 
-        {/* ================= MOBILE NAV ================= */}
         {userId && (
-          <div className="md:hidden border-t border-border bg-background">
+          <div className="border-t border-border/70 bg-card/65 backdrop-blur-xl md:hidden">
             <MobileNav userId={userId} />
           </div>
         )}
