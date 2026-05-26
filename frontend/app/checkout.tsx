@@ -40,7 +40,7 @@ export default function CheckoutScreen() {
   const pathname = usePathname();
   const { colors } = useTheme();
   const { t, locale } = useLanguage();
-  const { getToken, isSignedIn } = useAuth();
+  const { getToken, isLoaded, isSignedIn } = useAuth();
   const { user, isLoaded: isUserLoaded } = useUser();
   const { showToast } = useToast();
   const { items, itemCount, subtotal, clearCart } = useCart();
@@ -163,6 +163,10 @@ export default function CheckoutScreen() {
 
   if (isUserLoaded && isSignedIn && getRoleFromUser(user) === "farmer") {
     return <Redirect href="/farmer-dashboard" />;
+  }
+
+  if (isLoaded && !isSignedIn) {
+    return <Redirect href="/sign-in" />;
   }
 
   return (
@@ -343,6 +347,11 @@ const createStyles = (colors: {
       borderColor: colors.border,
       padding: 16,
       gap: 10,
+      shadowColor: "#000",
+      shadowOpacity: 0.06,
+      shadowRadius: 18,
+      shadowOffset: { width: 0, height: 10 },
+      elevation: 2,
     },
     sectionTitle: {
       color: colors.text,
@@ -422,10 +431,6 @@ const createStyles = (colors: {
     },
     primaryButton: {
       marginTop: 8,
-      backgroundColor: colors.primary,
-      borderRadius: 12,
-      alignItems: "center",
-      paddingVertical: 13,
     },
     primaryButtonText: {
       color: colors.primaryText,
@@ -438,6 +443,11 @@ const createStyles = (colors: {
       borderColor: colors.border,
       alignItems: "center",
       paddingVertical: 12,
+      shadowColor: "#000",
+      shadowOpacity: 0.03,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 6 },
+      elevation: 1,
     },
     secondaryButtonText: {
       color: colors.text,

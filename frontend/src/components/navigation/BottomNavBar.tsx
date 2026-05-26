@@ -2,6 +2,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useAuth, useUser } from "@clerk/clerk-expo";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useTheme } from "@/context/ThemeContext";
 import { getRoleFromUser } from "@/lib/role";
@@ -39,6 +40,7 @@ export function BottomNavBar({ currentPath, accountActive, onAccountPress }: Bot
   const { isSignedIn } = useAuth();
   const { user, isLoaded: isUserLoaded } = useUser();
   const params = useLocalSearchParams<{ tab?: string }>();
+  const insets = useSafeAreaInsets();
   const isFarmer = isUserLoaded && getRoleFromUser(user) === "farmer";
   const activePath = normalizePath(currentPath, !!isSignedIn);
   const accountHref = isSignedIn && isFarmer ? "/farmer-dashboard?tab=profile" : isSignedIn ? "/account" : "/sign-in";
@@ -49,7 +51,7 @@ export function BottomNavBar({ currentPath, accountActive, onAccountPress }: Bot
 
   return (
     <View style={styles.wrapper}>
-      <View style={styles.inner}>
+      <View style={[styles.inner, { marginBottom: insets.bottom > 0 ? insets.bottom : 10 }]}>
         <Pressable style={styles.item} onPress={() => router.push("/products") }>
           <MaterialCommunityIcons
             name="storefront-outline"
@@ -116,6 +118,9 @@ const createStyles = (colors: {
       paddingBottom: 12,
       paddingTop: 6,
       backgroundColor: "transparent",
+      zIndex: 9999,
+      elevation: 24,
+      pointerEvents: "box-none",
     },
     inner: {
       backgroundColor: colors.surface,

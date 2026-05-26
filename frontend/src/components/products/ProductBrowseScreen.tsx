@@ -116,6 +116,10 @@ export function ProductBrowseScreen() {
     return <Redirect href="/farmer-dashboard" />;
   }
 
+  if (isUserLoaded && !isSignedIn) {
+    return <Redirect href="/sign-in" />;
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <FlatList

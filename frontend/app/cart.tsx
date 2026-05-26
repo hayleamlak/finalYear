@@ -1,9 +1,11 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { usePathname, useRouter } from "expo-router";
+import { useAuth } from "@clerk/clerk-expo";
+import { Redirect, usePathname, useRouter } from "expo-router";
 import { FlatList, Image, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
 
 import { ThemeToggleButton } from "@/components/theme/ThemeToggleButton";
 import { BottomNavBar } from "@/components/navigation/BottomNavBar";
+import { LoadingState } from "@/components/ui/LoadingState";
 import { useCart } from "@/context/CartContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -19,8 +21,23 @@ export default function CartScreen() {
   const pathname = usePathname();
   const { colors } = useTheme();
   const { t, locale, getCountLabel } = useLanguage();
+  const { isLoaded, isSignedIn } = useAuth();
   const { items, itemCount, subtotal, updateQuantity, removeItem, clearCart } = useCart();
   const styles = createStyles(colors);
+
+  if (!isLoaded) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.container}>
+          <LoadingState title={t("cart.title")} subtitle={t("cart.emptyText")} cards={1} compact />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!isSignedIn) {
+    return <Redirect href="/sign-in" />;
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>

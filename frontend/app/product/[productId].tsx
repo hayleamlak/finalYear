@@ -12,6 +12,9 @@ import {
   View,
 } from "react-native";
 
+import { useAuth } from "@clerk/clerk-expo";
+import { Redirect } from "expo-router";
+
 import { BottomNavBar } from "@/components/navigation/BottomNavBar";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { apiFetch } from "@/lib/api";
@@ -55,7 +58,9 @@ function FieldRow({
   return (
     <View style={fieldRowStyle}>
       <Text style={fieldLabelStyle}>{label}</Text>
-      <Text style={fieldValueStyle}>{value}</Text>
+          <Text style={fieldValueStyle} numberOfLines={4}>
+            {value}
+          </Text>
     </View>
   );
 }
@@ -63,6 +68,7 @@ function FieldRow({
 export default function ProductDetailsScreen() {
   const router = useRouter();
   const pathname = usePathname();
+  const { isLoaded, isSignedIn } = useAuth();
   const { colors } = useTheme();
   const { t, locale } = useLanguage();
   const { showToast } = useToast();
@@ -170,6 +176,20 @@ export default function ProductDetailsScreen() {
   };
 
   const styles = createStyles(colors);
+
+  if (!isLoaded) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.loadingState}>
+          <LoadingState title={t("product.loading")} subtitle={t("product.about")} cards={1} compact />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!isSignedIn) {
+    return <Redirect href="/sign-in" />;
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -371,6 +391,7 @@ const createStyles = (colors: {
   container: {
     padding: 20,
     paddingBottom: 120,
+    gap: 16,
   },
   topRow: {
     flexDirection: "row",
@@ -443,6 +464,11 @@ const createStyles = (colors: {
     borderWidth: 1,
     borderColor: colors.border,
     marginTop: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.07,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 2,
   },
   titleRow: {
     flexDirection: "row",
@@ -461,10 +487,12 @@ const createStyles = (colors: {
   subtitle: {
     color: colors.textSubtle,
     marginTop: 6,
+    fontSize: 14,
   },
   pricePill: {
     backgroundColor: colors.accent,
     borderRadius: 999,
+      alignSelf: "flex-start",
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
@@ -511,21 +539,27 @@ const createStyles = (colors: {
     backgroundColor: colors.surfaceAlt,
     borderRadius: 18,
     padding: 14,
+    gap: 10,
   },
   fieldRow: {
-    marginBottom: 12,
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 10,
   },
   fieldLabel: {
     color: colors.textSubtle,
     fontSize: 12,
     textTransform: "uppercase",
     letterSpacing: 0.8,
-    marginBottom: 4,
+    marginBottom: 6,
   },
   fieldValue: {
     color: colors.text,
     fontSize: 15,
-    lineHeight: 20,
+    lineHeight: 22,
   },
   actionRow: {
     marginTop: 18,
@@ -542,6 +576,11 @@ const createStyles = (colors: {
     backgroundColor: colors.primary,
     borderRadius: 18,
     paddingVertical: 16,
+      shadowColor: colors.primary,
+      shadowOpacity: 0.2,
+      shadowRadius: 16,
+      shadowOffset: { width: 0, height: 8 },
+      elevation: 3,
     alignItems: "center",
   },
   primaryButtonWide: {
