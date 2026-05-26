@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useAuth, useUser } from "@clerk/clerk-expo";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useTheme } from "@/context/ThemeContext";
@@ -38,11 +38,12 @@ export function BottomNavBar({ currentPath, accountActive, onAccountPress }: Bot
   const { colors } = useTheme();
   const { isSignedIn } = useAuth();
   const { user, isLoaded: isUserLoaded } = useUser();
+  const params = useLocalSearchParams<{ tab?: string }>();
   const isFarmer = isUserLoaded && getRoleFromUser(user) === "farmer";
   const activePath = normalizePath(currentPath, !!isSignedIn);
   const accountHref = isSignedIn && isFarmer ? "/farmer-dashboard?tab=profile" : isSignedIn ? "/account" : "/sign-in";
   const isAccountActive = accountActive ?? (activePath === "/account" || activePath === "/sign-in" || (isFarmer && activePath === "/farmer-dashboard"));
-  const isProductsTabActive = isFarmer && activePath === "/farmer-dashboard";
+  const isProductsTabActive = isFarmer && activePath === "/farmer-dashboard" && params.tab === "products";
 
   const styles = createStyles(colors);
 

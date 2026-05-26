@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Modal,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -68,6 +69,7 @@ export default function FarmerDashboardScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [selectedOrderItem, setSelectedOrderItem] = useState<FarmerOrderItem | null>(null);
 
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
@@ -533,7 +535,9 @@ export default function FarmerDashboardScreen() {
                   {computed.latestOrders.length === 0 ? (
                     <Text style={styles.helperText}>No incoming orders yet.</Text>
                   ) : (
-                    computed.latestOrders.map((item) => <OrderCard key={item.id} item={item} compact />)
+                    computed.latestOrders.map((item) => (
+                      <OrderCard key={item.id} item={item} compact onPress={() => setSelectedOrderItem(item)} />
+                    ))
                   )}
                 </View>
 
@@ -659,11 +663,11 @@ export default function FarmerDashboardScreen() {
             {activeTab === "orders" ? (
               <View style={styles.card}>
                 <Text style={styles.cardTitle}>Incoming Orders</Text>
-                {orderItems.length === 0 ? (
+                  {orderItems.length === 0 ? (
                   <Text style={styles.helperText}>No incoming orders yet.</Text>
                 ) : (
                   orderItems.map((item) => (
-                    <OrderCard key={item.id} item={item}>
+                      <OrderCard key={item.id} item={item} onPress={() => setSelectedOrderItem(item)}>
                       <View style={styles.orderActions}>
                         {orderActions.map((action) => (
                           <Pressable
@@ -804,6 +808,11 @@ export default function FarmerDashboardScreen() {
         accountActive={activeTab === "profile"}
         onAccountPress={() => setActiveTab("profile")}
       />
+
+      <OrderDetailModal
+        orderItem={selectedOrderItem}
+        onClose={() => setSelectedOrderItem(null)}
+      />
     </SafeAreaView>
   );
 
@@ -873,8 +882,8 @@ export default function FarmerDashboardScreen() {
     onDelete: () => void;
   }) {
     return (
-      <View style={styles.productRow}>
-        <Pressable style={styles.productTapArea} onPress={() => router.push(`/product/${product.id}`)}>
+      <Pressable style={({ pressed }: { pressed?: boolean }) => [styles.productRow, pressed ? styles.cardPressed : null]} onPress={() => router.push(`/product/${product.id}`)}>
+        <View style={styles.productTapArea}>
           <Image source={{ uri: product.image }} style={styles.productImage} />
           <View style={styles.productDetails}>
             <Text style={styles.productTitle}>{product.product_name}</Text>
@@ -883,7 +892,7 @@ export default function FarmerDashboardScreen() {
             </Text>
             {product.product_detail ? <Text style={styles.productMeta} numberOfLines={2}>{product.product_detail}</Text> : null}
           </View>
-        </Pressable>
+        </View>
         <View style={styles.productButtons}>
           <Pressable style={styles.iconButtonSmall} onPress={onEdit}>
             <MaterialCommunityIcons name="pencil-outline" size={16} color={colors.text} />
@@ -899,16 +908,28 @@ export default function FarmerDashboardScreen() {
             <MaterialCommunityIcons name="delete-outline" size={16} color="#b91c1c" />
           </Pressable>
         </View>
-      </View>
+      </Pressable>
     );
   }
 
-  function OrderCard({ item, compact, children }: { item: FarmerOrderItem; compact?: boolean; children?: React.ReactNode }) {
+  function OrderCard({
+    item,
+    compact,
+    children,
+    onPress,
+  }: {
+    item: FarmerOrderItem;
+    compact?: boolean;
+    children?: React.ReactNode;
+    onPress?: () => void;
+  }) {
     const buyerName = `${item.order.user.first_name} ${item.order.user.last_name}`.trim();
     const total = item.price * item.quantity;
 
+    const Wrapper = onPress ? Pressable : View;
+
     return (
-      <View style={styles.orderCard}>
+      <Wrapper style={({ pressed }: { pressed?: boolean }) => [styles.orderCard, onPress && pressed ? styles.cardPressed : null]} onPress={onPress}>
         <View style={styles.sectionHeader}>
           <Text style={styles.productTitle}>{item.product.product_name}</Text>
           <Text style={styles.statusBadge}>{item.status}</Text>
@@ -926,7 +947,70 @@ export default function FarmerDashboardScreen() {
           </>
         ) : null}
         {children}
-      </View>
+      </Wrapper>
+    );
+  }
+
+  function OrderDetailModal({
+    orderItem,
+    onClose,
+  }: {
+    orderItem: FarmerOrderItem | null;
+    onClose: () => void;
+  }) {
+    if (!orderItem) {
+      return null;
+    }
+
+    const buyerName = `${orderItem.order.user.first_name} ${orderItem.order.user.last_name}`.trim();
+    const total = orderItem.price * orderItem.quantity;
+
+    return (
+      <Modal visible transparent animationType="slide" onRequestClose={onClose}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalTitle}>{orderItem.product.product_name}</Text>
+                <Text style={styles.modalSubtitle}>Order #{orderItem.order.id.slice(-8).toUpperCase()}</Text>
+              </View>
+              <Pressable style={styles.modalCloseButton} onPress={onClose}>
+                <MaterialCommunityIcons name="close" size={18} color={colors.text} />
+              </Pressable>
+            </View>
+
+            <View style={styles.modalSection}>
+              <Text style={styles.modalSectionTitle}>Customer</Text>
+              <InfoRow label="Name" value={buyerName || orderItem.order.user.email} />
+              <InfoRow label="Email" value={orderItem.order.user.email} />
+              <InfoRow label="Phone" value={orderItem.order.address.phone} />
+              <InfoRow label="Delivery" value={`${orderItem.order.address.addressLine1}, ${orderItem.order.address.city}`} />
+            </View>
+
+            <View style={styles.modalSection}>
+              <Text style={styles.modalSectionTitle}>Order Info</Text>
+              <InfoRow label="Item" value={orderItem.product.product_name} />
+              <InfoRow label="Quantity" value={String(orderItem.quantity)} />
+              <InfoRow label="Unit price" value={formatPrice(orderItem.price)} />
+              <InfoRow label="Total price" value={formatPrice(total)} />
+              <InfoRow label="Delivery status" value={orderItem.order.status} />
+              <InfoRow label="Item status" value={orderItem.status} />
+            </View>
+
+            <View style={styles.modalSection}>
+              <Text style={styles.modalSectionTitle}>Payment</Text>
+              <InfoRow label="Method" value={orderItem.order.payment?.method ?? "N/A"} />
+              <InfoRow label="Payment status" value={orderItem.order.payment?.status ?? "N/A"} />
+              <InfoRow label="Provider" value={orderItem.order.payment?.provider ?? "N/A"} />
+              <InfoRow label="Transaction ref" value={orderItem.order.payment?.transactionRef ?? "N/A"} />
+            </View>
+
+            <Pressable style={styles.primaryButton} onPress={onClose}>
+              <Text style={styles.primaryButtonText}>Close</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     );
   }
 
@@ -1307,6 +1391,10 @@ const createStyles = (colors: {
       padding: 12,
       gap: 5,
     },
+    cardPressed: {
+      opacity: 0.88,
+      transform: [{ scale: 0.995 }],
+    },
     statusBadge: {
       color: colors.accent,
       backgroundColor: colors.accentSoft,
@@ -1381,5 +1469,60 @@ const createStyles = (colors: {
     reviewText: {
       color: colors.text,
       lineHeight: 19,
+    },
+    modalBackdrop: {
+      flex: 1,
+      backgroundColor: "rgba(15, 23, 42, 0.55)",
+      justifyContent: "center",
+      padding: 16,
+    },
+    modalCard: {
+      borderRadius: 24,
+      backgroundColor: colors.background,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 16,
+      gap: 14,
+      maxHeight: "88%",
+    },
+    modalHeader: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 10,
+    },
+    modalTitle: {
+      color: colors.text,
+      fontSize: 18,
+      fontWeight: "900",
+    },
+    modalSubtitle: {
+      color: colors.textSubtle,
+      marginTop: 2,
+      fontSize: 12,
+      fontWeight: "700",
+    },
+    modalCloseButton: {
+      width: 38,
+      height: 38,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    modalSection: {
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+      padding: 12,
+      gap: 8,
+    },
+    modalSectionTitle: {
+      color: colors.text,
+      fontWeight: "900",
+      fontSize: 14,
+      marginBottom: 2,
     },
   });

@@ -2,7 +2,7 @@ import { useAuth, useSSO, useSignIn, useUser } from "@clerk/clerk-expo";
 import * as Linking from "expo-linking";
 import { Redirect } from "expo-router";
 import { usePathname, useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { RolePicker } from "@/components/auth/RolePicker";
@@ -11,7 +11,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { AppRole, dashboardForRole, getRoleFromUser } from "@/lib/role";
 
 export default function SignInScreen() {
-  const { isSignedIn } = useAuth();
+  const { isSignedIn, getToken } = useAuth();
   const { user } = useUser();
   const pathname = usePathname();
   const { colors } = useTheme();
@@ -23,6 +23,36 @@ export default function SignInScreen() {
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isSignedIn) {
+      return;
+    }
+
+    const logToken = async () => {
+      try {
+        const token = await getToken();
+        console.log("🔥 Clerk token:", token);
+
+        if (!token) {
+          console.warn("[DEBUG] Clerk returned no token yet.");
+          return;
+        }
+
+        fetch("http://localhost:4000/api/v1/auth/debug-token", {
+          method: "GET",
+          headers: { Authorization: `Bearer ${token}` },
+        })
+          .then((r) => r.json())
+          .then((d) => console.log("[DEBUG] backend response:", d))
+          .catch((err) => console.warn("[DEBUG] backend fetch error:", err));
+      } catch (err) {
+        console.warn("[DEBUG] getToken failed:", err);
+      }
+    };
+
+    void logToken();
+  }, [getToken, isSignedIn]);
 
   const onSignInPress = async () => {
     if (!isLoaded || isSubmitting) {
@@ -40,6 +70,7 @@ export default function SignInScreen() {
 
       if (result.status === "complete") {
         await setActive({ session: result.createdSessionId });
+
         const existingRole = getRoleFromUser(user);
 
         if (user && existingRole !== selectedRole) {
@@ -87,6 +118,7 @@ export default function SignInScreen() {
 
       if (createdSessionId && setActiveFromSSO) {
         await setActiveFromSSO({ session: createdSessionId });
+
         if (user) {
           await user.update({
             unsafeMetadata: {
