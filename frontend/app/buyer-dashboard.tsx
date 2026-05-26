@@ -67,7 +67,7 @@ export default function BuyerDashboardScreen() {
             <View style={styles.headerRow}>
               <View>
                 <Text style={styles.title}>Buyer Marketplace</Text>
-                <Text style={styles.subtitle}>Farmer uploads appear here in real-time from your product API.</Text>
+                <Text style={styles.subtitle}>farmer uploads will appear here for you to browse and purchase from.</Text>
               </View>
             </View>
 

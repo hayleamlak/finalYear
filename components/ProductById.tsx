@@ -157,9 +157,11 @@ export default function ProductById({ product, isDashboard,cartQuantity,notifica
             </div>
   
             {/* DETAILS */}
-            <p className="text-gray-700 dark:text-gray-200 leading-relaxed text-lg bg-gray-50 dark:bg-gray-700 p-4 rounded-xl shadow-inner">
-              {product?.product_detail || "No detailed description available."}
-            </p>
+            {((product?.category || "").toLowerCase() !== "coffee") && (
+              <p className="text-gray-700 dark:text-gray-200 leading-relaxed text-lg bg-gray-50 dark:bg-gray-700 p-4 rounded-xl shadow-inner">
+                {product?.product_detail || "No detailed description available."}
+              </p>
+            )}
   
             <p className="text-gray-700 dark:text-gray-200 text-md">
               <span className="font-semibold">Status:</span> {product?.status}
