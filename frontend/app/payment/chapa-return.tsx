@@ -4,7 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
 
 import { BottomNavBar } from "@/components/navigation/BottomNavBar";
+import { LoadingState } from "@/components/ui/LoadingState";
 import { useCart } from "@/context/CartContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useToast } from "@/context/ToastContext";
 import { apiFetch } from "@/lib/api";
@@ -19,8 +21,9 @@ export default function ChapaReturnScreen() {
   const { clearCart } = useCart();
   const { showToast } = useToast();
   const { colors } = useTheme();
+  const { t } = useLanguage();
   const [state, setState] = useState<VerifyState>("loading");
-  const [message, setMessage] = useState("Verifying payment...");
+  const [message, setMessage] = useState(t("payment.verifying"));
   const handledTxRef = useRef<string | null>(null);
   const didAutoNavigate = useRef(false);
   const autoNavTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -32,7 +35,7 @@ export default function ChapaReturnScreen() {
       if (!tx_ref || Array.isArray(tx_ref)) {
         if (!cancelled) {
           setState("failed");
-          setMessage("Missing payment reference.");
+          setMessage(t("payment.missingReference"));
         }
         return;
       }
@@ -45,7 +48,7 @@ export default function ChapaReturnScreen() {
       try {
         const token = await getToken();
         if (!token) {
-          throw new Error("Please sign in and try again.");
+          throw new Error(t("payment.signInRequired"));
         }
 
         await apiFetch<{ success: boolean }>("/api/v1/orders/chapa/verify", {
@@ -57,10 +60,10 @@ export default function ChapaReturnScreen() {
         if (!cancelled) {
           clearCart();
           setState("success");
-          setMessage("Payment successful. Your order is confirmed.");
+          setMessage(t("payment.successMessage"));
           showToast({
-            title: "Payment successful",
-            message: "Your order has been paid and confirmed.",
+            title: t("payment.successTitle"),
+            message: t("payment.successToast"),
             variant: "success",
           });
 
@@ -74,10 +77,10 @@ export default function ChapaReturnScreen() {
       } catch (error) {
         if (!cancelled) {
           setState("failed");
-          setMessage(error instanceof Error ? error.message : "Unable to verify payment.");
+          setMessage(error instanceof Error ? error.message : t("payment.verifyFailed"));
           showToast({
-            title: "Payment verification failed",
-            message: error instanceof Error ? error.message : "Unable to verify payment.",
+            title: t("payment.verifyFailedTitle"),
+            message: error instanceof Error ? error.message : t("payment.verifyFailed"),
             variant: "error",
           });
         }
@@ -99,13 +102,17 @@ export default function ChapaReturnScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        <Text style={styles.title}>
-          {state === "loading" ? "Processing Payment" : state === "success" ? "Payment Complete" : "Payment Failed"}
-        </Text>
-        <Text style={styles.message}>{message}</Text>
-        <Pressable style={styles.primaryButton} onPress={() => router.replace("/products")}>
-          <Text style={styles.primaryButtonText}>{state === "success" ? "Continue shopping" : "Back to products"}</Text>
-        </Pressable>
+        {state === "loading" ? (
+          <LoadingState title={t("payment.processing")} subtitle={message} cards={1} compact />
+        ) : (
+          <>
+            <Text style={styles.title}>{state === "success" ? t("payment.complete") : t("payment.failed")}</Text>
+            <Text style={styles.message}>{message}</Text>
+            <Pressable style={styles.primaryButton} onPress={() => router.replace("/products")}>
+              <Text style={styles.primaryButtonText}>{state === "success" ? t("common.continueShopping") : t("common.backToProducts")}</Text>
+            </Pressable>
+          </>
+        )}
       </View>
       <BottomNavBar currentPath={pathname} />
     </SafeAreaView>

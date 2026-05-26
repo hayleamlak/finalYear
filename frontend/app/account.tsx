@@ -86,7 +86,7 @@ export default function AccountScreen() {
             </View>
             <LanguageSwitcher />
           </View>
-          <Text style={styles.helper}>Current: {locale.toUpperCase()}</Text>
+          <Text style={styles.helper}>{t("common.current")}: {locale.toUpperCase()}</Text>
           <View style={styles.menuRowNoBorder}>
             <View style={styles.menuLeft}>
               <MaterialCommunityIcons name="theme-light-dark" size={18} color={colors.text} />

@@ -15,6 +15,8 @@ import {
 } from "react-native";
 
 import { BottomNavBar } from "@/components/navigation/BottomNavBar";
+import { LoadingState } from "@/components/ui/LoadingState";
+import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useToast } from "@/context/ToastContext";
 import { apiFetch } from "@/lib/api";
@@ -22,25 +24,29 @@ import { useCart } from "@/context/CartContext";
 import { getRoleFromUser } from "@/lib/role";
 import { ProductListResponse, ProductSummary } from "@/types/product";
 
-const formatPrice = (value: number) =>
-  new Intl.NumberFormat("en-ET", { style: "currency", currency: "ETB" }).format(value);
+const formatPrice = (value: number, locale: string) =>
+  new Intl.NumberFormat(locale === "am" ? "am-ET" : locale === "om" ? "om-ET" : "en-ET", {
+    style: "currency",
+    currency: "ETB",
+  }).format(value);
 
 function getStockLabel(stock: number) {
   if (stock <= 0) {
-    return "Out of stock";
+    return "out";
   }
 
   if (stock < 10) {
-    return "Limited stock";
+    return "limited";
   }
 
-  return "Available now";
+  return "available";
 }
 
 export function ProductBrowseScreen() {
   const router = useRouter();
   const pathname = usePathname();
   const { colors } = useTheme();
+  const { t, locale } = useLanguage();
   const { showToast } = useToast();
   const { isSignedIn } = useAuth();
   const { user, isLoaded: isUserLoaded } = useUser();
@@ -60,11 +66,11 @@ export function ProductBrowseScreen() {
 
   const subtitle = useMemo(() => {
     if (isSignedIn) {
-      return "Browse fresh products, compare prices, and keep moving toward checkout.";
+      return t("browse.subtitleSignedIn");
     }
 
-    return "Explore products first. Sign in when you want to save a cart or place an order.";
-  }, [isSignedIn]);
+    return t("browse.subtitleSignedOut");
+  }, [isSignedIn, t]);
 
   const loadProducts = async (query: string, refreshing = false) => {
     try {
@@ -84,7 +90,7 @@ export function ProductBrowseScreen() {
       const response = await apiFetch<ProductListResponse>(`/api/v1/products?${params.toString()}`);
       setItems(response.data.items);
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Unable to load products.");
+      setErrorMessage(error instanceof Error ? error.message : t("browse.loadFailed"));
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -128,16 +134,16 @@ export function ProductBrowseScreen() {
             <View style={styles.hero}>
               <View style={styles.heroTopRow}>
                 <View style={styles.badge}>
-                  <Text style={styles.badgeText}>Market</Text>
+                  <Text style={styles.badgeText}>{t("browse.market")}</Text>
                 </View>
               </View>
-              <Text style={styles.title}>Fresh coffee, ready to browse</Text>
+              <Text style={styles.title}>{t("browse.title")}</Text>
               <Text style={styles.subtitle}>{subtitle}</Text>
 
               <View style={styles.searchRow}>
                 <TextInput
                   style={styles.searchInput}
-                  placeholder="Search products"
+                  placeholder={t("browse.searchPlaceholder")}
                   placeholderTextColor={colors.textSubtle}
                   value={search}
                   onChangeText={setSearch}
@@ -145,51 +151,48 @@ export function ProductBrowseScreen() {
                   onSubmitEditing={onSubmitSearch}
                 />
                 <Pressable style={styles.searchButton} onPress={onSubmitSearch}>
-                  <Text style={styles.searchButtonText}>Search</Text>
+                  <Text style={styles.searchButtonText}>{t("browse.search")}</Text>
                 </Pressable>
               </View>
 
               <View style={styles.statsRow}>
                 <View style={styles.statCard}>
                   <Text style={styles.statNumber}>{items.length}</Text>
-                  <Text style={styles.statLabel}>Visible products</Text>
+                  <Text style={styles.statLabel}>{t("browse.visibleProducts")}</Text>
                 </View>
                 <View style={styles.statCard}>
                   <Text style={styles.statNumber}>{isSignedIn ? "On" : "Off"}</Text>
-                  <Text style={styles.statLabel}>Session status</Text>
+                  <Text style={styles.statLabel}>{t("browse.sessionStatus")}</Text>
                 </View>
               </View>
             </View>
 
             <View style={styles.sectionHeader}>
               <View style={styles.sectionRow}>
-                <Text style={styles.sectionTitle}>Featured products</Text>
+                <Text style={styles.sectionTitle}>{t("browse.featuredProducts")}</Text>
                 <Pressable style={styles.cartShortcut} onPress={() => router.push("/cart") }>
-                  <Text style={styles.cartShortcutText}>Cart ({itemCount})</Text>
+                  <Text style={styles.cartShortcutText}>{t("nav.cart")} ({itemCount})</Text>
                 </Pressable>
               </View>
-              <Text style={styles.sectionCaption}>Tap a card to open details and add to cart.</Text>
+              <Text style={styles.sectionCaption}>{t("browse.sectionCaption")}</Text>
             </View>
           </View>
         }
         ListEmptyComponent={
           isLoading ? (
-            <View style={styles.loadingState}>
-              <ActivityIndicator color="#f59e0b" />
-              <Text style={styles.loadingText}>Loading products...</Text>
-            </View>
+            <LoadingState title={t("browse.loading")} subtitle={t("browse.sectionCaption")} cards={3} />
           ) : errorMessage ? (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyTitle}>Could not load products</Text>
+              <Text style={styles.emptyTitle}>{t("browse.couldNotLoad")}</Text>
               <Text style={styles.emptyText}>{errorMessage}</Text>
               <Pressable style={styles.retryButton} onPress={() => void loadProducts(search)}>
-                <Text style={styles.retryButtonText}>Try again</Text>
+                <Text style={styles.retryButtonText}>{t("common.tryAgain")}</Text>
               </Pressable>
             </View>
           ) : (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyTitle}>No products found</Text>
-              <Text style={styles.emptyText}>Try a different search term or refresh the list.</Text>
+              <Text style={styles.emptyTitle}>{t("browse.noProductsFound")}</Text>
+              <Text style={styles.emptyText}>{t("browse.noProductsHint")}</Text>
             </View>
           )
         }
@@ -201,7 +204,7 @@ export function ProductBrowseScreen() {
               ) : (
                 <View style={styles.cardImagePlaceholder}>
                   <ActivityIndicator color="#f59e0b" />
-                  <Text style={styles.cardImagePlaceholderText}>Loading image...</Text>
+                  <Text style={styles.cardImagePlaceholderText}>{t("common.loadingImage")}</Text>
                 </View>
               )}
             </Pressable>
@@ -211,14 +214,14 @@ export function ProductBrowseScreen() {
                   <Text style={styles.cardTitle} numberOfLines={1}>
                     {item.product_name}
                   </Text>
-                  <Text style={styles.cardPrice}>{formatPrice(item.price)}</Text>
+                  <Text style={styles.cardPrice}>{formatPrice(item.price, locale)}</Text>
                 </View>
                 <Text style={styles.cardDescription} numberOfLines={2}>
-                  {item.product_detail ?? "Fresh product from a local farmer."}
+                  {item.product_detail ?? t("browse.freshProduct")}
                 </Text>
                 <View style={styles.cardFooter}>
-                  <Text style={styles.cardMeta}>{getStockLabel(item.stock)}</Text>
-                  <Text style={styles.cardMeta}>{item.stock} in stock</Text>
+                  <Text style={styles.cardMeta}>{t(`browse.stock.${getStockLabel(item.stock)}` as any)}</Text>
+                  <Text style={styles.cardMeta}>{item.stock} {t("product.inStock")}</Text>
                 </View>
               </Pressable>
 
@@ -227,15 +230,15 @@ export function ProductBrowseScreen() {
                   style={styles.viewButton}
                   onPress={() => router.push({ pathname: "/product/[productId]", params: { productId: item.id } })}
                 >
-                  <Text style={styles.viewButtonText}>View</Text>
+                  <Text style={styles.viewButtonText}>{t("buyer.view")}</Text>
                 </Pressable>
                 <Pressable
                   style={[styles.cartButton, item.stock <= 0 && styles.cartButtonDisabled]}
                   onPress={() => {
                     addItem(item, 1);
                     showToast({
-                      title: "Added to cart",
-                      message: `${item.product_name} is now in your cart.`,
+                      title: t("product.addedToCart"),
+                      message: `${item.product_name} ${t("browse.inCartMessage")}`,
                       variant: "success",
                     });
                   }}
@@ -243,8 +246,8 @@ export function ProductBrowseScreen() {
                 >
                   <Text style={styles.cartButtonText}>
                     {item.stock <= 0
-                      ? "Out of stock"
-                      : "Add to cart"}
+                      ? t("common.outOfStock")
+                      : t("buyer.addToCart")}
                   </Text>
                 </Pressable>
               </View>
@@ -256,10 +259,10 @@ export function ProductBrowseScreen() {
             {!isSignedIn ? (
               <View style={styles.footerActions}>
                 <Pressable style={styles.primaryFooterButton} onPress={() => router.push("/sign-in") }>
-                  <Text style={styles.primaryFooterButtonText}>Sign in</Text>
+                  <Text style={styles.primaryFooterButtonText}>{t("common.signIn")}</Text>
                 </Pressable>
-                <Pressable style={styles.secondaryFooterButton} onPress={() => router.push("/sign-up") }>
-                  <Text style={styles.secondaryFooterButtonText}>Create account</Text>
+                <Pressable style={styles.secondaryFooterButton} onPress={() => router.push("/sign-in") }>
+                  <Text style={styles.secondaryFooterButtonText}>{t("common.createAccount")}</Text>
                 </Pressable>
               </View>
             ) : null}

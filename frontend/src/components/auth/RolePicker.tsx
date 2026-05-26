@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { useLanguage } from "@/context/LanguageContext";
 import { AppRole } from "@/lib/role";
 
 type RolePickerProps = {
@@ -16,23 +17,24 @@ type RolePickerProps = {
 };
 
 export function RolePicker({ value, onChange, colors }: RolePickerProps) {
+  const { t } = useLanguage();
   const styles = createStyles(colors);
 
   return (
     <View style={styles.wrapper}>
-      <Text style={styles.label}>Select role</Text>
+      <Text style={styles.label}>{t("auth.selectRole")}</Text>
       <View style={styles.row}>
         <Pressable
           style={[styles.option, value === "buyer" && styles.optionActive]}
           onPress={() => onChange("buyer")}
         >
-          <Text style={[styles.optionText, value === "buyer" && styles.optionTextActive]}>Buyer</Text>
+          <Text style={[styles.optionText, value === "buyer" && styles.optionTextActive]}>{t("auth.buyerRole")}</Text>
         </Pressable>
         <Pressable
           style={[styles.option, value === "farmer" && styles.optionActive]}
           onPress={() => onChange("farmer")}
         >
-          <Text style={[styles.optionText, value === "farmer" && styles.optionTextActive]}>Farmer</Text>
+          <Text style={[styles.optionText, value === "farmer" && styles.optionTextActive]}>{t("auth.farmerRole")}</Text>
         </Pressable>
       </View>
     </View>

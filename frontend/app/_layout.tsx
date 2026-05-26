@@ -27,7 +27,14 @@ export default function RootLayout() {
         <ThemeProvider>
           <ToastProvider>
             <CartProvider>
-              <Stack screenOptions={{ headerShown: false }} />
+              <Stack
+                screenOptions={{
+                  headerShown: false,
+                  animation: "fade",
+                  animationDuration: 220,
+                  contentStyle: { backgroundColor: "#f8fafc" },
+                }}
+              />
             </CartProvider>
           </ToastProvider>
         </ThemeProvider>

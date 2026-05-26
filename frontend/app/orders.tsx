@@ -2,16 +2,21 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useAuth, useUser } from "@clerk/clerk-expo";
 import { Redirect, usePathname, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, FlatList, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
+import { FlatList, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
 
 import { BottomNavBar } from "@/components/navigation/BottomNavBar";
+import { LoadingState } from "@/components/ui/LoadingState";
 import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
 import { fetchMyOrders } from "@/lib/orders";
 import { getRoleFromUser } from "@/lib/role";
 import { OrderSummary } from "@/types/order";
 
-const formatPrice = (value: number) => new Intl.NumberFormat("en-ET", { style: "currency", currency: "ETB" }).format(value);
+const formatPrice = (value: number, locale: string) =>
+  new Intl.NumberFormat(locale === "am" ? "am-ET" : locale === "om" ? "om-ET" : "en-ET", {
+    style: "currency",
+    currency: "ETB",
+  }).format(value);
 
 export default function OrdersScreen() {
   const router = useRouter();
@@ -19,7 +24,7 @@ export default function OrdersScreen() {
   const { colors } = useTheme();
   const { isSignedIn, getToken } = useAuth();
   const { user, isLoaded: isUserLoaded } = useUser();
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const [orders, setOrders] = useState<OrderSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -80,21 +85,20 @@ export default function OrdersScreen() {
         {!isSignedIn ? (
           <View style={styles.card}>
             <MaterialCommunityIcons name="account-lock-outline" size={24} color={colors.accent} />
-            <Text style={styles.emptyText}>Sign in to view your orders.</Text>
+            <Text style={styles.emptyText}>{t("orders.signInPrompt")}</Text>
             <Pressable style={styles.primaryButton} onPress={() => router.push("/sign-in") }>
               <Text style={styles.primaryButtonText}>{t("account.signIn")}</Text>
             </Pressable>
           </View>
         ) : isLoading ? (
           <View style={styles.card}>
-            <ActivityIndicator color={colors.accent} />
-            <Text style={styles.emptyText}>Loading orders...</Text>
+            <LoadingState title={t("orders.loading")} subtitle={t("orders.empty")} cards={1} compact />
           </View>
         ) : errorMessage ? (
           <View style={styles.card}>
             <Text style={styles.errorText}>{errorMessage}</Text>
             <Pressable style={styles.secondaryButton} onPress={() => setRefreshTick((value) => value + 1)}>
-              <Text style={styles.secondaryButtonText}>Retry</Text>
+              <Text style={styles.secondaryButtonText}>{t("common.retry")}</Text>
             </Pressable>
           </View>
         ) : orders.length === 0 ? (
@@ -118,8 +122,8 @@ export default function OrdersScreen() {
                     <Text style={styles.orderStatus}>{item.status}</Text>
                   </View>
                   <Text style={styles.orderMeta}>{new Date(item.createdAt).toLocaleString()}</Text>
-                  <Text style={styles.orderMeta}>Items: {item.items.length} | City: {city}</Text>
-                  <Text style={styles.orderTotal}>{formatPrice(total)}</Text>
+                  <Text style={styles.orderMeta}>{t("orders.items")}: {item.items.length} | {t("orders.city")}: {city}</Text>
+                  <Text style={styles.orderTotal}>{formatPrice(total, locale)}</Text>
                 </View>
               );
             }}

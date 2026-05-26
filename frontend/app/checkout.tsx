@@ -15,7 +15,9 @@ import * as WebBrowser from "expo-web-browser";
 import { useAuth, useUser } from "@clerk/clerk-expo";
 
 import { BottomNavBar } from "@/components/navigation/BottomNavBar";
+import { LoadingButton } from "@/components/ui/LoadingButton";
 import { useCart } from "@/context/CartContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useToast } from "@/context/ToastContext";
 import { apiFetch } from "@/lib/api";
@@ -27,12 +29,17 @@ type PaymentMethod = "cash" | "card";
 const DELIVERY_FEE = 150;
 const SERVICE_FEE = 40;
 
-const formatPrice = (value: number) => new Intl.NumberFormat("en-ET", { style: "currency", currency: "ETB" }).format(value);
+const formatPrice = (value: number, locale: string) =>
+  new Intl.NumberFormat(locale === "am" ? "am-ET" : locale === "om" ? "om-ET" : "en-ET", {
+    style: "currency",
+    currency: "ETB",
+  }).format(value);
 
 export default function CheckoutScreen() {
   const router = useRouter();
   const pathname = usePathname();
   const { colors } = useTheme();
+  const { t, locale } = useLanguage();
   const { getToken, isSignedIn } = useAuth();
   const { user, isLoaded: isUserLoaded } = useUser();
   const { showToast } = useToast();
@@ -56,12 +63,12 @@ export default function CheckoutScreen() {
 
   const onPlaceOrder = async () => {
     if (items.length === 0) {
-      Alert.alert("Cart is empty", "Add products before checkout.");
+      Alert.alert(t("cart.emptyTitle"), t("cart.emptyText"));
       return;
     }
 
     if (!fullName.trim() || !phone.trim() || !address.trim() || !city.trim()) {
-      Alert.alert("Missing details", "Please fill in your name, phone, address, and city.");
+      Alert.alert(t("checkout.missingDetailsTitle"), t("checkout.missingDetailsMessage"));
       return;
     }
 
@@ -71,11 +78,11 @@ export default function CheckoutScreen() {
 
     if (paymentMethod === "cash") {
       Alert.alert(
-        "Order placed",
-        `Thanks, ${fullName.trim()}!\nTotal: ${formatPrice(total)}\nPayment: Cash on delivery`,
+        t("checkout.orderPlacedTitle"),
+        `${t("checkout.orderPlacedMessagePrefix")}, ${fullName.trim()}!\n${t("checkout.totalLabel")}: ${formatPrice(total, locale)}\n${t("checkout.paymentLabel")}: ${t("checkout.cashOnDelivery")}`,
         [
           {
-            text: "OK",
+            text: t("common.ok"),
             onPress: () => {
               clearCart();
               router.push("/products");
@@ -91,7 +98,7 @@ export default function CheckoutScreen() {
 
       const token = await getToken();
       if (!token) {
-        throw new Error("Please sign in before checkout.");
+        throw new Error(t("checkout.signInBeforeCheckout"));
       }
 
       const appReturnUrl = Linking.createURL("/payment/chapa-return");
@@ -122,8 +129,8 @@ export default function CheckoutScreen() {
 
       if (sessionResult.type === "cancel" || sessionResult.type === "dismiss") {
         showToast({
-          title: "Payment cancelled",
-          message: "You cancelled Chapa checkout.",
+          title: t("checkout.paymentCancelledTitle"),
+          message: t("checkout.paymentCancelledMessage"),
           variant: "info",
         });
         return;
@@ -134,7 +141,7 @@ export default function CheckoutScreen() {
 
       const txRef = txRefFromReturn || initResponse.data.tx_ref;
       if (!txRef) {
-        throw new Error("Missing transaction reference from Chapa.");
+        throw new Error(t("checkout.missingTxRef"));
       }
 
       router.replace({
@@ -143,8 +150,8 @@ export default function CheckoutScreen() {
       });
     } catch (error) {
       showToast({
-        title: "Payment failed",
-        message: error instanceof Error ? error.message : "Unable to complete Chapa payment.",
+        title: t("checkout.paymentFailedTitle"),
+        message: error instanceof Error ? error.message : t("checkout.paymentFailedMessage"),
         variant: "error",
       });
     } finally {
@@ -163,34 +170,34 @@ export default function CheckoutScreen() {
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         <View style={styles.headerRow}>
           <Pressable style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backButtonText}>Back</Text>
+            <Text style={styles.backButtonText}>{t("common.back")}</Text>
           </Pressable>
-          <Text style={styles.title}>Checkout</Text>
+          <Text style={styles.title}>{t("checkout.title")}</Text>
         </View>
 
         {items.length === 0 ? (
           <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Your cart is empty</Text>
-            <Text style={styles.helperText}>Add products to continue with checkout.</Text>
+            <Text style={styles.sectionTitle}>{t("checkout.cartEmptyTitle")}</Text>
+            <Text style={styles.helperText}>{t("checkout.cartEmptyMessage")}</Text>
             <Pressable style={styles.primaryButton} onPress={() => router.push("/products") }>
-              <Text style={styles.primaryButtonText}>Browse products</Text>
+              <Text style={styles.primaryButtonText}>{t("cart.browseProducts")}</Text>
             </Pressable>
           </View>
         ) : (
           <>
             <View style={styles.card}>
-              <Text style={styles.sectionTitle}>Delivery details</Text>
+              <Text style={styles.sectionTitle}>{t("checkout.deliveryDetails")}</Text>
 
               <TextInput
                 style={styles.input}
-                placeholder="Full name"
+                placeholder={t("checkout.fullName")}
                 placeholderTextColor={colors.textSubtle}
                 value={fullName}
                 onChangeText={setFullName}
               />
               <TextInput
                 style={styles.input}
-                placeholder="Phone number"
+                placeholder={t("checkout.phoneNumber")}
                 placeholderTextColor={colors.textSubtle}
                 keyboardType="phone-pad"
                 value={phone}
@@ -198,21 +205,21 @@ export default function CheckoutScreen() {
               />
               <TextInput
                 style={styles.input}
-                placeholder="Address"
+                placeholder={t("checkout.address")}
                 placeholderTextColor={colors.textSubtle}
                 value={address}
                 onChangeText={setAddress}
               />
               <TextInput
                 style={styles.input}
-                placeholder="City"
+                placeholder={t("checkout.city")}
                 placeholderTextColor={colors.textSubtle}
                 value={city}
                 onChangeText={setCity}
               />
               <TextInput
                 style={[styles.input, styles.noteInput]}
-                placeholder="Optional delivery note"
+                placeholder={t("checkout.deliveryNote")}
                 placeholderTextColor={colors.textSubtle}
                 multiline
                 value={note}
@@ -221,14 +228,14 @@ export default function CheckoutScreen() {
             </View>
 
             <View style={styles.card}>
-              <Text style={styles.sectionTitle}>Payment method</Text>
+              <Text style={styles.sectionTitle}>{t("checkout.paymentMethod")}</Text>
               <View style={styles.paymentRow}>
                 <Pressable
                   style={[styles.paymentPill, paymentMethod === "cash" && styles.paymentPillActive]}
                   onPress={() => setPaymentMethod("cash")}
                 >
                   <Text style={[styles.paymentPillText, paymentMethod === "cash" && styles.paymentPillTextActive]}>
-                    Cash on delivery
+                    {t("checkout.cashOnDelivery")}
                   </Text>
                 </Pressable>
                 <Pressable
@@ -236,37 +243,43 @@ export default function CheckoutScreen() {
                   onPress={() => setPaymentMethod("card")}
                 >
                   <Text style={[styles.paymentPillText, paymentMethod === "card" && styles.paymentPillTextActive]}>
-                    Chapa
+                    {t("checkout.chapa")}
                   </Text>
                 </Pressable>
               </View>
             </View>
 
             <View style={styles.card}>
-              <Text style={styles.sectionTitle}>Order summary</Text>
+              <Text style={styles.sectionTitle}>{t("checkout.orderSummary")}</Text>
               <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Items ({itemCount})</Text>
-                <Text style={styles.summaryValue}>{formatPrice(subtotal)}</Text>
+                <Text style={styles.summaryLabel}>{t("checkout.itemsLabel")} ({itemCount})</Text>
+                <Text style={styles.summaryValue}>{formatPrice(subtotal, locale)}</Text>
               </View>
               <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Delivery fee</Text>
-                <Text style={styles.summaryValue}>{formatPrice(DELIVERY_FEE)}</Text>
+                <Text style={styles.summaryLabel}>{t("checkout.deliveryFee")}</Text>
+                <Text style={styles.summaryValue}>{formatPrice(DELIVERY_FEE, locale)}</Text>
               </View>
               <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Service fee</Text>
-                <Text style={styles.summaryValue}>{formatPrice(SERVICE_FEE)}</Text>
+                <Text style={styles.summaryLabel}>{t("checkout.serviceFee")}</Text>
+                <Text style={styles.summaryValue}>{formatPrice(SERVICE_FEE, locale)}</Text>
               </View>
               <View style={styles.separator} />
               <View style={styles.summaryRow}>
-                <Text style={styles.totalLabel}>Total</Text>
-                <Text style={styles.totalValue}>{formatPrice(total)}</Text>
+                <Text style={styles.totalLabel}>{t("checkout.totalLabel")}</Text>
+                <Text style={styles.totalValue}>{formatPrice(total, locale)}</Text>
               </View>
 
-              <Pressable style={styles.primaryButton} onPress={onPlaceOrder} disabled={isPaying}>
-                <Text style={styles.primaryButtonText}>{isPaying ? "Opening Chapa..." : "Place order"}</Text>
-              </Pressable>
+              <LoadingButton
+                title={t("checkout.placeOrder")}
+                loading={isPaying}
+                onPress={() => void onPlaceOrder()}
+                backgroundColor={colors.primary}
+                textColor={colors.primaryText}
+                spinnerColor={colors.primaryText}
+                style={styles.primaryButton}
+              />
               <Pressable style={styles.secondaryButton} onPress={() => router.push("/cart") }>
-                <Text style={styles.secondaryButtonText}>Back to cart</Text>
+                <Text style={styles.secondaryButtonText}>{t("checkout.backToCart")}</Text>
               </Pressable>
             </View>
           </>

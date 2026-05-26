@@ -5,14 +5,20 @@ import { FlatList, Image, Pressable, SafeAreaView, StyleSheet, Text, View } from
 import { ThemeToggleButton } from "@/components/theme/ThemeToggleButton";
 import { BottomNavBar } from "@/components/navigation/BottomNavBar";
 import { useCart } from "@/context/CartContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
 
-const formatPrice = (value: number) => new Intl.NumberFormat("en-ET", { style: "currency", currency: "ETB" }).format(value);
+const formatPrice = (value: number, locale: string) =>
+  new Intl.NumberFormat(locale === "am" ? "am-ET" : locale === "om" ? "om-ET" : "en-ET", {
+    style: "currency",
+    currency: "ETB",
+  }).format(value);
 
 export default function CartScreen() {
   const router = useRouter();
   const pathname = usePathname();
   const { colors } = useTheme();
+  const { t, locale, getCountLabel } = useLanguage();
   const { items, itemCount, subtotal, updateQuantity, removeItem, clearCart } = useCart();
   const styles = createStyles(colors);
 
@@ -22,14 +28,14 @@ export default function CartScreen() {
         <View style={styles.headerRow}>
           <Pressable style={styles.backButton} onPress={() => router.back()}>
             <MaterialCommunityIcons name="arrow-left" size={18} color={colors.text} />
-            <Text style={styles.backButtonText}>Back</Text>
+            <Text style={styles.backButtonText}>{t("common.back")}</Text>
           </Pressable>
           <View style={styles.titleWrap}>
             <MaterialCommunityIcons name="cart-outline" size={22} color={colors.text} />
-            <Text style={styles.title}>My cart</Text>
+            <Text style={styles.title}>{t("cart.title")}</Text>
           </View>
           <View style={styles.countPill}>
-            <Text style={styles.countPillText}>{itemCount} items</Text>
+            <Text style={styles.countPillText}>{getCountLabel(itemCount)}</Text>
           </View>
         </View>
         <View style={styles.toggleRow}>
@@ -38,11 +44,11 @@ export default function CartScreen() {
 
         {items.length === 0 ? (
           <View style={styles.emptyCard}>
-            <Text style={styles.emptyTitle}>Your cart is empty</Text>
-            <Text style={styles.emptyText}>Browse products and tap Add to cart.</Text>
+            <Text style={styles.emptyTitle}>{t("cart.emptyTitle")}</Text>
+            <Text style={styles.emptyText}>{t("cart.emptyText")}</Text>
             <Pressable style={styles.primaryButton} onPress={() => router.push("/products") }>
               <MaterialCommunityIcons name="storefront-outline" size={18} color={colors.primaryText} />
-              <Text style={styles.primaryButtonText}>Browse products</Text>
+              <Text style={styles.primaryButtonText}>{t("cart.browseProducts")}</Text>
             </Pressable>
           </View>
         ) : (
@@ -59,8 +65,8 @@ export default function CartScreen() {
                     <Text style={styles.productName} numberOfLines={1}>
                       {item.product.product_name}
                     </Text>
-                    <Text style={styles.productPrice}>{formatPrice(item.product.price)}</Text>
-                    <Text style={styles.productMeta}>Stock: {item.product.stock}</Text>
+                    <Text style={styles.productPrice}>{formatPrice(item.product.price, locale)}</Text>
+                    <Text style={styles.productMeta}>{t("common.stock")}: {item.product.stock}</Text>
 
                     <View style={styles.controlsRow}>
                       <Pressable
@@ -80,7 +86,7 @@ export default function CartScreen() {
 
                       <Pressable style={styles.removeButton} onPress={() => removeItem(item.product.id)}>
                         <MaterialCommunityIcons name="trash-can-outline" size={14} color="#fca5a5" />
-                        <Text style={styles.removeButtonText}>Remove</Text>
+                        <Text style={styles.removeButtonText}>{t("common.remove")}</Text>
                       </Pressable>
                     </View>
                   </View>
@@ -90,23 +96,23 @@ export default function CartScreen() {
 
             <View style={styles.summaryCard}>
               <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Subtotal</Text>
-                <Text style={styles.summaryValue}>{formatPrice(subtotal)}</Text>
+                <Text style={styles.summaryLabel}>{t("common.subtotal")}</Text>
+                <Text style={styles.summaryValue}>{formatPrice(subtotal, locale)}</Text>
               </View>
 
               <Pressable style={styles.primaryButton} onPress={() => router.push("/checkout") }>
                 <MaterialCommunityIcons name="credit-card-outline" size={18} color={colors.primaryText} />
-                <Text style={styles.primaryButtonText}>Proceed to checkout</Text>
+                <Text style={styles.primaryButtonText}>{t("cart.checkout")}</Text>
               </Pressable>
 
               <Pressable style={styles.secondaryButton} onPress={() => router.push("/products") }>
                 <MaterialCommunityIcons name="shopping-outline" size={18} color={colors.text} />
-                <Text style={styles.secondaryButtonText}>Continue shopping</Text>
+                <Text style={styles.secondaryButtonText}>{t("common.continueShopping")}</Text>
               </Pressable>
 
               <Pressable style={styles.ghostButton} onPress={clearCart}>
                 <MaterialCommunityIcons name="cart-remove" size={18} color={colors.textSubtle} />
-                <Text style={styles.ghostButtonText}>Clear cart</Text>
+                <Text style={styles.ghostButtonText}>{t("cart.clearCart")}</Text>
               </Pressable>
             </View>
           </>

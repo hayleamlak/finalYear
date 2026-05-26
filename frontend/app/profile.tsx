@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { BottomNavBar } from "@/components/navigation/BottomNavBar";
+import { LoadingButton } from "@/components/ui/LoadingButton";
 import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
 import { fetchMyProfile, updateMyProfile } from "@/lib/profile";
@@ -128,58 +129,77 @@ export default function ProfileScreen() {
         {!isSignedIn ? (
           <View style={styles.card}>
             <MaterialCommunityIcons name="account-lock-outline" size={24} color={colors.accent} />
-            <Text style={styles.emptyText}>Sign in to view your profile.</Text>
-            <Pressable style={styles.primaryButton} onPress={() => router.push("/sign-in") }>
-              <Text style={styles.primaryButtonText}>{t("account.signIn")}</Text>
-            </Pressable>
+            <Text style={styles.emptyText}>{t("profile.signInPrompt")}</Text>
+            <LoadingButton
+              title={t("account.signIn")}
+              onPress={() => router.push("/sign-in")}
+              backgroundColor={colors.primary}
+              textColor={colors.primaryText}
+              spinnerColor={colors.primaryText}
+              style={styles.primaryButton}
+            />
           </View>
         ) : isLoading ? (
           <View style={styles.card}>
-            <ActivityIndicator color={colors.accent} />
-            <Text style={styles.emptyText}>Loading profile...</Text>
+            <LoadingButton
+              title={t("profile.loading")}
+              loading
+              onPress={() => undefined}
+              backgroundColor={colors.surfaceAlt}
+              textColor={colors.text}
+              spinnerColor={colors.accent}
+              style={styles.loadingButton}
+            />
           </View>
         ) : (
           <View style={styles.card}>
             <MaterialCommunityIcons name="account-box-outline" size={24} color={colors.accent} />
             {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
             <View style={styles.row}>
-              <Text style={styles.label}>First name</Text>
+              <Text style={styles.label}>{t("profile.firstName")}</Text>
               <TextInput
                 style={styles.input}
                 value={firstName}
                 onChangeText={setFirstName}
-                placeholder="First name"
+                placeholder={t("profile.firstName")}
                 placeholderTextColor={colors.textSubtle}
               />
             </View>
             <View style={styles.row}>
-              <Text style={styles.label}>Last name</Text>
+              <Text style={styles.label}>{t("profile.lastName")}</Text>
               <TextInput
                 style={styles.input}
                 value={lastName}
                 onChangeText={setLastName}
-                placeholder="Last name"
+                placeholder={t("profile.lastName")}
                 placeholderTextColor={colors.textSubtle}
               />
             </View>
             <View style={styles.row}>
-              <Text style={styles.label}>Address</Text>
+              <Text style={styles.label}>{t("profile.address")}</Text>
               <TextInput
                 style={[styles.input, styles.multilineInput]}
                 value={address}
                 onChangeText={setAddress}
-                placeholder="Address"
+                placeholder={t("profile.address")}
                 placeholderTextColor={colors.textSubtle}
                 multiline
               />
             </View>
             <View style={styles.row}>
-              <Text style={styles.label}>Email</Text>
+              <Text style={styles.label}>{t("profile.email")}</Text>
               <Text style={styles.value}>{email || userEmail || "-"}</Text>
             </View>
-            <Pressable style={[styles.primaryButton, saveDisabled && styles.primaryButtonDisabled]} disabled={saveDisabled} onPress={() => void onSave()}>
-              {isSaving ? <ActivityIndicator color={colors.primaryText} /> : <Text style={styles.primaryButtonText}>Save changes</Text>}
-            </Pressable>
+            <LoadingButton
+              title={t("profile.saveChanges")}
+              loading={isSaving}
+              disabled={saveDisabled}
+              onPress={() => void onSave()}
+              backgroundColor={colors.primary}
+              textColor={colors.primaryText}
+              spinnerColor={colors.primaryText}
+              style={[styles.primaryButton, saveDisabled && styles.primaryButtonDisabled]}
+            />
           </View>
         )}
       </ScrollView>
@@ -311,16 +331,11 @@ const createStyles = (colors: {
     },
     primaryButton: {
       marginTop: 10,
-      borderRadius: 12,
-      backgroundColor: colors.primary,
-      alignItems: "center",
-      paddingVertical: 10,
     },
     primaryButtonDisabled: {
       opacity: 0.55,
     },
-    primaryButtonText: {
-      color: colors.primaryText,
-      fontWeight: "800",
+    loadingButton: {
+      alignSelf: "stretch",
     },
   });

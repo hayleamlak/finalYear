@@ -2,9 +2,10 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useAuth, useUser } from "@clerk/clerk-expo";
 import { Redirect, usePathname, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, FlatList, Image, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
+import { FlatList, Image, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
 
 import { BottomNavBar } from "@/components/navigation/BottomNavBar";
+import { LoadingState } from "@/components/ui/LoadingState";
 import { useCart } from "@/context/CartContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -12,8 +13,11 @@ import { apiFetch } from "@/lib/api";
 import { getRoleFromUser } from "@/lib/role";
 import { ProductListResponse, ProductSummary } from "@/types/product";
 
-const formatPrice = (value: number) =>
-  new Intl.NumberFormat("en-ET", { style: "currency", currency: "ETB" }).format(value);
+const formatPrice = (value: number, locale: string) =>
+  new Intl.NumberFormat(locale === "am" ? "am-ET" : locale === "om" ? "om-ET" : "en-ET", {
+    style: "currency",
+    currency: "ETB",
+  }).format(value);
 
 export default function BuyerDashboardScreen() {
   const router = useRouter();
@@ -66,34 +70,31 @@ export default function BuyerDashboardScreen() {
           <View style={styles.headerWrap}>
             <View style={styles.headerRow}>
               <View>
-                <Text style={styles.title}>Buyer Marketplace</Text>
-                <Text style={styles.subtitle}>farmer uploads will appear here for you to browse and purchase from.</Text>
+                <Text style={styles.title}>{t("buyer.title")}</Text>
+                <Text style={styles.subtitle}>{t("buyer.subtitle")}</Text>
               </View>
             </View>
 
             <View style={styles.infoRow}>
-              <Text style={styles.infoText}>Products: {products.length}</Text>
+              <Text style={styles.infoText}>{t("buyer.productsCount")}: {products.length}</Text>
               <Pressable style={styles.cartPill} onPress={() => router.push("/cart") }>
                 <Text style={styles.cartPillText}>{t("nav.cart")}: {itemCount}</Text>
               </Pressable>
             </View>
 
             {isLoading ? (
-              <View style={styles.centerCard}>
-                <ActivityIndicator color={colors.accent} />
-                <Text style={styles.helperText}>Loading products...</Text>
-              </View>
+              <LoadingState title={t("buyer.loading")} subtitle={t("buyer.subtitle")} cards={2} compact />
             ) : null}
 
             {!isLoading && errorMessage ? (
               <View style={styles.centerCard}>
-                <Text style={styles.errorText}>{errorMessage}</Text>
+                <Text style={styles.errorText}>{t("buyer.error")}</Text>
               </View>
             ) : null}
 
             {!isLoading && !errorMessage && products.length === 0 ? (
               <View style={styles.centerCard}>
-                <Text style={styles.helperText}>No products yet. Farmer uploads will appear here.</Text>
+                <Text style={styles.helperText}>{t("buyer.empty")}</Text>
               </View>
             ) : null}
           </View>
@@ -106,26 +107,26 @@ export default function BuyerDashboardScreen() {
               <Image source={{ uri: item.image }} style={styles.productImage} />
               <View style={styles.productBody}>
                 <Text style={styles.productName} numberOfLines={1}>{item.product_name}</Text>
-                <Text style={styles.productPrice}>{formatPrice(item.price)}</Text>
-                <Text style={styles.productMeta}>Stock: {item.stock}</Text>
+                <Text style={styles.productPrice}>{formatPrice(item.price, locale)}</Text>
+                <Text style={styles.productMeta}>{t("common.stock")}: {item.stock}</Text>
 
                 <View style={styles.actionRow}>
                   <Pressable
                     style={styles.secondaryAction}
                     onPress={() => router.push({ pathname: "/product/[productId]", params: { productId: item.id } })}
                   >
-                    <Text style={styles.secondaryActionText}>View</Text>
+                    <Text style={styles.secondaryActionText}>{t("buyer.view")}</Text>
                   </Pressable>
                   <Pressable
                     style={styles.primaryAction}
                     onPress={() => addItem(item, 1)}
                     disabled={item.stock <= 0}
                   >
-                    <Text style={styles.primaryActionText}>{item.stock <= 0 ? "Sold out" : "Add to cart"}</Text>
+                    <Text style={styles.primaryActionText}>{item.stock <= 0 ? t("buyer.soldOut") : t("buyer.addToCart")}</Text>
                   </Pressable>
                 </View>
 
-                {qtyInCart > 0 ? <Text style={styles.inCartText}>In cart: {qtyInCart}</Text> : null}
+                {qtyInCart > 0 ? <Text style={styles.inCartText}>{t("common.inCart")}: {qtyInCart}</Text> : null}
               </View>
             </View>
           );

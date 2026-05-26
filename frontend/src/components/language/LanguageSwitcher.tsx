@@ -4,9 +4,9 @@ import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
 
 const OPTIONS = [
-  { value: "en", label: "EN" },
-  { value: "am", label: "AM" },
-  { value: "om", label: "OM" },
+  { value: "en", labelKey: "language.english" },
+  { value: "am", labelKey: "language.amharic" },
+  { value: "om", labelKey: "language.oromo" },
 ] as const;
 
 export function LanguageSwitcher() {
@@ -27,7 +27,7 @@ export function LanguageSwitcher() {
               style={[styles.option, active && styles.optionActive]}
               onPress={() => setLocale(option.value)}
             >
-              <Text style={[styles.optionText, active && styles.optionTextActive]}>{option.label}</Text>
+              <Text style={[styles.optionText, active && styles.optionTextActive]}>{t(option.labelKey)}</Text>
             </Pressable>
           );
         })}

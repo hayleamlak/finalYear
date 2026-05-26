@@ -1,7 +1,6 @@
 import { useLocalSearchParams, usePathname, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Image,
   Pressable,
@@ -14,24 +13,30 @@ import {
 } from "react-native";
 
 import { BottomNavBar } from "@/components/navigation/BottomNavBar";
+import { LoadingState } from "@/components/ui/LoadingState";
 import { apiFetch } from "@/lib/api";
 import { useCart } from "@/context/CartContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useToast } from "@/context/ToastContext";
 import { ProductDetailsResponse } from "@/types/product";
 
-const formatPrice = (value: number) => new Intl.NumberFormat("en-ET", { style: "currency", currency: "ETB" }).format(value);
+const formatPrice = (value: number, locale: string) =>
+  new Intl.NumberFormat(locale === "am" ? "am-ET" : locale === "om" ? "om-ET" : "en-ET", {
+    style: "currency",
+    currency: "ETB",
+  }).format(value);
 
 function getStockLabel(stock: number) {
   if (stock <= 0) {
-    return "Out of stock";
+    return "out";
   }
 
   if (stock < 10) {
-    return "Limited stock";
+    return "limited";
   }
 
-  return "Available now";
+  return "available";
 }
 
 function FieldRow({
@@ -59,6 +64,7 @@ export default function ProductDetailsScreen() {
   const router = useRouter();
   const pathname = usePathname();
   const { colors } = useTheme();
+  const { t, locale } = useLanguage();
   const { showToast } = useToast();
   const { addItem } = useCart();
   const { productId } = useLocalSearchParams<{ productId?: string | string[] }>();
@@ -70,7 +76,7 @@ export default function ProductDetailsScreen() {
   useEffect(() => {
     if (!resolvedProductId) {
       setIsLoading(false);
-      setErrorMessage("Missing product id.");
+      setErrorMessage(t("product.missingId"));
       return;
     }
 
@@ -82,7 +88,7 @@ export default function ProductDetailsScreen() {
         const response = await apiFetch<ProductDetailsResponse>(`/api/v1/products/${resolvedProductId}`);
         setProduct(response.data);
       } catch (error) {
-        setErrorMessage(error instanceof Error ? error.message : "Unable to load this product.");
+        setErrorMessage(error instanceof Error ? error.message : t("product.loadFailed"));
       } finally {
         setIsLoading(false);
       }
@@ -92,7 +98,7 @@ export default function ProductDetailsScreen() {
   }, [resolvedProductId]);
 
   const farmerName = product ? `${product.farmer.first_name} ${product.farmer.last_name}` : "";
-  const description = product?.product_detail ?? product?.description?.flavorNotes ?? "No description was provided for this product yet.";
+  const description = product?.product_detail ?? product?.description?.flavorNotes ?? t("product.noDescription");
   const onAddToCart = () => {
     if (!product) {
       return;
@@ -100,8 +106,8 @@ export default function ProductDetailsScreen() {
 
     if (product.stock <= 0) {
       showToast({
-        title: "Out of stock",
-        message: "This product is currently unavailable.",
+        title: t("common.outOfStock"),
+        message: t("product.unavailable"),
         variant: "error",
       });
       return;
@@ -119,8 +125,8 @@ export default function ProductDetailsScreen() {
     });
 
     showToast({
-      title: "Added to cart",
-      message: `${product.product_name} was added to your cart.`,
+      title: t("product.addedToCart"),
+      message: `${product.product_name} ${t("product.addedToCartMessage")}`,
       variant: "success",
     });
   };
@@ -131,7 +137,7 @@ export default function ProductDetailsScreen() {
     }
 
     if (product.stock <= 0) {
-      Alert.alert("Out of stock", "This product is currently unavailable.");
+      Alert.alert(t("common.outOfStock"), t("product.unavailable"));
       return;
     }
 
@@ -146,7 +152,7 @@ export default function ProductDetailsScreen() {
       createdAt: product.createdAt,
     });
 
-    router.push("/cart");
+    router.push("/checkout");
   };
 
   const onShareProduct = async () => {
@@ -156,10 +162,10 @@ export default function ProductDetailsScreen() {
 
     try {
       await Share.share({
-        message: `${product.product_name} - ${formatPrice(product.price)}\n${description}`,
+        message: `${product.product_name} - ${formatPrice(product.price, locale)}\n${description}`,
       });
     } catch {
-      Alert.alert("Share failed", "Unable to share this product right now.");
+      Alert.alert(t("product.shareFailedTitle"), t("product.shareFailedMessage"));
     }
   };
 
@@ -170,21 +176,18 @@ export default function ProductDetailsScreen() {
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         <View style={styles.topRow}>
           <Pressable style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backButtonText}>Back</Text>
+            <Text style={styles.backButtonText}>{t("common.back")}</Text>
           </Pressable>
         </View>
 
         {isLoading ? (
-          <View style={styles.loadingState}>
-            <ActivityIndicator color="#f59e0b" />
-            <Text style={styles.loadingText}>Loading product details...</Text>
-          </View>
+          <LoadingState title={t("product.loading")} subtitle={t("product.about")} cards={1} compact />
         ) : errorMessage ? (
           <View style={styles.errorCard}>
-            <Text style={styles.errorTitle}>Could not load product</Text>
+            <Text style={styles.errorTitle}>{t("product.couldNotLoad")}</Text>
             <Text style={styles.errorText}>{errorMessage}</Text>
             <Pressable style={styles.retryButton} onPress={() => router.back()}>
-              <Text style={styles.retryButtonText}>Go back</Text>
+              <Text style={styles.retryButtonText}>{t("product.goBack")}</Text>
             </Pressable>
           </View>
         ) : product ? (
@@ -198,16 +201,16 @@ export default function ProductDetailsScreen() {
                   <Text style={styles.subtitle}>{farmerName}</Text>
                 </View>
                 <View style={styles.pricePill}>
-                  <Text style={styles.pricePillText}>{formatPrice(product.price)}</Text>
+                  <Text style={styles.pricePillText}>{formatPrice(product.price, locale)}</Text>
                 </View>
               </View>
 
               <View style={styles.metaRow}>
                 <View style={styles.metaPill}>
-                  <Text style={styles.metaPillText}>{getStockLabel(product.stock)}</Text>
+                  <Text style={styles.metaPillText}>{t(`product.stock.${getStockLabel(product.stock)}` as any)}</Text>
                 </View>
                 <View style={styles.metaPill}>
-                  <Text style={styles.metaPillText}>{product.stock} in stock</Text>
+                  <Text style={styles.metaPillText}>{product.stock} {t("product.inStock")}</Text>
                 </View>
                 <View style={styles.metaPill}>
                   <Text style={styles.metaPillText}>{product.status}</Text>
@@ -216,64 +219,65 @@ export default function ProductDetailsScreen() {
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>About this product</Text>
+              <Text style={styles.sectionTitle}>{t("product.about")}</Text>
               <Text style={styles.sectionText}>{description}</Text>
             </View>
 
+            {product.description ? (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Coffee details</Text>
+              <Text style={styles.sectionTitle}>{t("product.details")}</Text>
               <View style={styles.infoCard}>
                 <FieldRow
-                  label="Origin"
+                  label={t("product.origin")}
                   value={product.description?.origion ?? "N/A"}
                   fieldRowStyle={styles.fieldRow}
                   fieldLabelStyle={styles.fieldLabel}
                   fieldValueStyle={styles.fieldValue}
                 />
                 <FieldRow
-                  label="Flavor notes"
+                  label={t("product.flavorNotes")}
                   value={product.description?.flavorNotes ?? "N/A"}
                   fieldRowStyle={styles.fieldRow}
                   fieldLabelStyle={styles.fieldLabel}
                   fieldValueStyle={styles.fieldValue}
                 />
                 <FieldRow
-                  label="Roast level"
+                  label={t("product.roastLevel")}
                   value={product.description?.roastLevel ?? "N/A"}
                   fieldRowStyle={styles.fieldRow}
                   fieldLabelStyle={styles.fieldLabel}
                   fieldValueStyle={styles.fieldValue}
                 />
                 <FieldRow
-                  label="Processing method"
+                  label={t("product.processingMethod")}
                   value={product.description?.processingMethod ?? "N/A"}
                   fieldRowStyle={styles.fieldRow}
                   fieldLabelStyle={styles.fieldLabel}
                   fieldValueStyle={styles.fieldValue}
                 />
                 <FieldRow
-                  label="Processed"
+                  label={t("product.processed")}
                   value={product.description?.processed ?? "N/A"}
                   fieldRowStyle={styles.fieldRow}
                   fieldLabelStyle={styles.fieldLabel}
                   fieldValueStyle={styles.fieldValue}
                 />
                 <FieldRow
-                  label="Grind type"
+                  label={t("product.grindType")}
                   value={product.description?.grindType ?? "N/A"}
                   fieldRowStyle={styles.fieldRow}
                   fieldLabelStyle={styles.fieldLabel}
                   fieldValueStyle={styles.fieldValue}
                 />
                 <FieldRow
-                  label="Grind sizes"
+                  label={t("product.grindSizes")}
                   value={product.description?.grindSizes ?? "N/A"}
                   fieldRowStyle={styles.fieldRow}
                   fieldLabelStyle={styles.fieldLabel}
                   fieldValueStyle={styles.fieldValue}
                 />
                 <FieldRow
-                  label="Sustainable"
+                  label={t("product.sustainable")}
                   value={product.description?.isSustainable ?? "N/A"}
                   fieldRowStyle={styles.fieldRow}
                   fieldLabelStyle={styles.fieldLabel}
@@ -281,26 +285,27 @@ export default function ProductDetailsScreen() {
                 />
               </View>
             </View>
+            ) : null}
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Farmer</Text>
+              <Text style={styles.sectionTitle}>{t("product.farmer")}</Text>
               <View style={styles.infoCard}>
                 <FieldRow
-                  label="Name"
+                  label={t("product.name")}
                   value={farmerName}
                   fieldRowStyle={styles.fieldRow}
                   fieldLabelStyle={styles.fieldLabel}
                   fieldValueStyle={styles.fieldValue}
                 />
                 <FieldRow
-                  label="Email"
+                  label={t("product.email")}
                   value={product.farmer.email}
                   fieldRowStyle={styles.fieldRow}
                   fieldLabelStyle={styles.fieldLabel}
                   fieldValueStyle={styles.fieldValue}
                 />
                 <FieldRow
-                  label="Farmer ID"
+                  label={t("product.farmerId")}
                   value={product.farmer.id}
                   fieldRowStyle={styles.fieldRow}
                   fieldLabelStyle={styles.fieldLabel}
@@ -317,7 +322,7 @@ export default function ProductDetailsScreen() {
                   disabled={product.stock <= 0}
                 >
                   <Text style={styles.primaryButtonText}>
-                    {product.stock <= 0 ? "Out of stock" : "Add to cart"}
+                    {product.stock <= 0 ? t("common.outOfStock") : t("product.addToCart")}
                   </Text>
                 </Pressable>
                 <Pressable
@@ -325,16 +330,16 @@ export default function ProductDetailsScreen() {
                   onPress={onBuyNow}
                   disabled={product.stock <= 0}
                 >
-                  <Text style={styles.secondaryButtonText}>Buy now</Text>
+                  <Text style={styles.secondaryButtonText}>{t("product.buyNow")}</Text>
                 </Pressable>
               </View>
 
               <View style={styles.inlineActionsRow}>
                 <Pressable style={[styles.secondaryButton, styles.inlineActionButton]} onPress={() => router.push("/cart") }>
-                  <Text style={styles.secondaryButtonText}>View cart</Text>
+                  <Text style={styles.secondaryButtonText}>{t("product.viewCart")}</Text>
                 </Pressable>
                 <Pressable style={[styles.secondaryButton, styles.inlineActionButton]} onPress={() => void onShareProduct()}>
-                  <Text style={styles.secondaryButtonText}>Share product</Text>
+                  <Text style={styles.secondaryButtonText}>{t("product.shareProduct")}</Text>
                 </Pressable>
               </View>
             </View>

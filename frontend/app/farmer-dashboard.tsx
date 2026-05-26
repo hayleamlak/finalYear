@@ -19,6 +19,8 @@ import {
 
 import { LanguageSwitcher } from "@/components/language/LanguageSwitcher";
 import { BottomNavBar } from "@/components/navigation/BottomNavBar";
+import { LoadingState } from "@/components/ui/LoadingState";
+import { useLanguage } from "@/context/LanguageContext";
 import { ThemeToggleButton } from "@/components/theme/ThemeToggleButton";
 import { useTheme } from "@/context/ThemeContext";
 import { apiFetch } from "@/lib/api";
@@ -43,8 +45,11 @@ type CreateProductResponse = {
 
 const MAX_IMAGE_BYTES = 7 * 1024 * 1024;
 
-const formatPrice = (value: number) =>
-  new Intl.NumberFormat("en-ET", { style: "currency", currency: "ETB" }).format(value);
+const formatPrice = (value: number, locale: string) =>
+  new Intl.NumberFormat(locale === "am" ? "am-ET" : locale === "om" ? "om-ET" : "en-ET", {
+    style: "currency",
+    currency: "ETB",
+  }).format(value);
 
 const orderActions: Array<{ label: string; status: FarmerOrderStatus; icon: keyof typeof MaterialCommunityIcons.glyphMap }> = [
   { label: "Accept", status: "PROCESSING", icon: "check-circle-outline" },
@@ -61,6 +66,7 @@ export default function FarmerDashboardScreen() {
   const { signOut } = useClerk();
   const { user, isLoaded: isUserLoaded } = useUser();
   const { colors } = useTheme();
+  const { t, locale } = useLanguage();
   const styles = createStyles(colors);
 
   const [activeTab, setActiveTab] = useState<FarmerTab>("overview");
@@ -129,7 +135,7 @@ export default function FarmerDashboardScreen() {
       const response = await fetchFarmerDashboard(token);
       setDashboard(response.data);
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Unable to load farmer dashboard.");
+      setErrorMessage(error instanceof Error ? error.message : t("farmer.loading"));
     } finally {
       setIsLoading(false);
     }
@@ -448,8 +454,7 @@ export default function FarmerDashboardScreen() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.centerScreen}>
-          <ActivityIndicator color={colors.accent} />
-          <Text style={styles.helperText}>Loading...</Text>
+          <LoadingState title={t("farmer.loadingData")} subtitle={t("farmer.subtitle")} cards={1} compact />
         </View>
       </SafeAreaView>
     );
@@ -475,8 +480,8 @@ export default function FarmerDashboardScreen() {
             )}
           </View>
           <View style={styles.headerText}>
-            <Text style={styles.title}>Farmer Workspace</Text>
-            <Text style={styles.subtitle}>Products, orders, earnings, visibility, and customer feedback.</Text>
+            <Text style={styles.title}>{t("farmer.title")}</Text>
+            <Text style={styles.subtitle}>{t("farmer.subtitle")}</Text>
           </View>
           <Pressable style={styles.iconButton} onPress={() => void loadDashboard()}>
             <MaterialCommunityIcons name="refresh" size={18} color={colors.text} />
@@ -487,10 +492,7 @@ export default function FarmerDashboardScreen() {
 
         {isLoading ? (
           <View style={styles.card}>
-            <View style={styles.centerRow}>
-              <ActivityIndicator color={colors.accent} />
-              <Text style={styles.helperText}>Loading farmer data...</Text>
-            </View>
+            <LoadingState title={t("farmer.loading")} subtitle={t("farmer.loadingData")} cards={2} compact />
           </View>
         ) : null}
 
@@ -499,10 +501,10 @@ export default function FarmerDashboardScreen() {
             {activeTab === "overview" ? (
               <>
                 <View style={styles.statsGrid}>
-                  <StatCard icon="package-variant-closed" label="Products" value={String(dashboard.summary.totalProducts)} />
-                  <StatCard icon="clipboard-list-outline" label="Pending Orders" value={String(dashboard.summary.pendingOrders)} />
-                  <StatCard icon="cash-multiple" label="Earnings" value={formatPrice(dashboard.summary.totalEarnings)} />
-                  <StatCard icon="star-outline" label="Rating" value={dashboard.summary.averageRating.toFixed(1)} />
+                  <StatCard icon="package-variant-closed" label={t("farmer.products")} value={String(dashboard.summary.totalProducts)} />
+                  <StatCard icon="clipboard-list-outline" label={t("farmer.pendingOrders")} value={String(dashboard.summary.pendingOrders)} />
+                  <StatCard icon="cash-multiple" label={t("farmer.earnings")} value={formatPrice(dashboard.summary.totalEarnings, locale)} />
+                  <StatCard icon="star-outline" label={t("farmer.rating")} value={dashboard.summary.averageRating.toFixed(1)} />
                 </View>
 
                 <View style={styles.card}>
@@ -690,16 +692,16 @@ export default function FarmerDashboardScreen() {
             {activeTab === "earnings" ? (
               <>
                 <View style={styles.statsGrid}>
-                  <StatCard icon="calendar-today" label="Today" value={formatPrice(dashboard.earnings.today)} />
-                  <StatCard icon="calendar-week" label="This Week" value={formatPrice(dashboard.earnings.week)} />
-                  <StatCard icon="calendar-month" label="This Month" value={formatPrice(dashboard.earnings.month)} />
-                  <StatCard icon="cash-check" label="Paid" value={formatPrice(dashboard.earnings.paidAmount)} />
+                  <StatCard icon="calendar-today" label={t("farmer.today")} value={formatPrice(dashboard.earnings.today, locale)} />
+                  <StatCard icon="calendar-week" label={t("farmer.thisWeek")} value={formatPrice(dashboard.earnings.week, locale)} />
+                  <StatCard icon="calendar-month" label={t("farmer.thisMonth")} value={formatPrice(dashboard.earnings.month, locale)} />
+                  <StatCard icon="cash-check" label={t("farmer.paid")} value={formatPrice(dashboard.earnings.paidAmount, locale)} />
                 </View>
                 <View style={styles.card}>
                   <Text style={styles.cardTitle}>Payment Summary</Text>
-                  <InfoRow label="Paid payments" value={formatPrice(dashboard.earnings.paidAmount)} />
-                  <InfoRow label="Pending payments" value={formatPrice(dashboard.earnings.pendingAmount)} />
-                  <InfoRow label="Total earnings" value={formatPrice(dashboard.earnings.total)} />
+                  <InfoRow label={t("farmer.paidPayments")} value={formatPrice(dashboard.earnings.paidAmount, locale)} />
+                  <InfoRow label={t("farmer.pendingPayments")} value={formatPrice(dashboard.earnings.pendingAmount, locale)} />
+                  <InfoRow label={t("farmer.totalEarnings")} value={formatPrice(dashboard.earnings.total, locale)} />
                 </View>
                 <View style={styles.card}>
                   <Text style={styles.cardTitle}>Chapa Transactions</Text>
@@ -711,7 +713,7 @@ export default function FarmerDashboardScreen() {
                         <View style={styles.productLeft}>
                           <MaterialCommunityIcons name="credit-card-check-outline" size={18} color={colors.accent} />
                           <View>
-                            <Text style={styles.productTitle}>{formatPrice(item.price * item.quantity)}</Text>
+                            <Text style={styles.productTitle}>{formatPrice(item.price * item.quantity, locale)}</Text>
                             <Text style={styles.productMeta}>{item.order.payment?.provider ?? "Payment"} | {item.order.payment?.status}</Text>
                           </View>
                         </View>
@@ -888,7 +890,7 @@ export default function FarmerDashboardScreen() {
           <View style={styles.productDetails}>
             <Text style={styles.productTitle}>{product.product_name}</Text>
             <Text style={styles.productMeta}>
-              {formatPrice(product.price)} | Stock: {product.stock} | {product.status}
+              {formatPrice(product.price, locale)} | {t("farmer.stock")}: {product.stock} | {product.status}
             </Text>
             {product.product_detail ? <Text style={styles.productMeta} numberOfLines={2}>{product.product_detail}</Text> : null}
           </View>
@@ -935,7 +937,7 @@ export default function FarmerDashboardScreen() {
           <Text style={styles.statusBadge}>{item.status}</Text>
         </View>
         <Text style={styles.productMeta}>Buyer: {buyerName || item.order.user.email}</Text>
-        <Text style={styles.productMeta}>Qty: {item.quantity} | Total: {formatPrice(total)}</Text>
+        <Text style={styles.productMeta}>{t("farmer.qty")}: {item.quantity} | {t("farmer.total")}: {formatPrice(total, locale)}</Text>
         {!compact ? (
           <>
             <Text style={styles.productMeta}>
@@ -991,8 +993,8 @@ export default function FarmerDashboardScreen() {
               <Text style={styles.modalSectionTitle}>Order Info</Text>
               <InfoRow label="Item" value={orderItem.product.product_name} />
               <InfoRow label="Quantity" value={String(orderItem.quantity)} />
-              <InfoRow label="Unit price" value={formatPrice(orderItem.price)} />
-              <InfoRow label="Total price" value={formatPrice(total)} />
+              <InfoRow label={t("farmer.price")} value={formatPrice(orderItem.price, locale)} />
+              <InfoRow label={t("farmer.total")} value={formatPrice(total, locale)} />
               <InfoRow label="Delivery status" value={orderItem.order.status} />
               <InfoRow label="Item status" value={orderItem.status} />
             </View>

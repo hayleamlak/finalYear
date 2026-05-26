@@ -3,10 +3,12 @@ import * as Linking from "expo-linking";
 import { Redirect } from "expo-router";
 import { usePathname, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { RolePicker } from "@/components/auth/RolePicker";
 import { BottomNavBar } from "@/components/navigation/BottomNavBar";
+import { LoadingButton } from "@/components/ui/LoadingButton";
+import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
 import { AppRole, dashboardForRole, getRoleFromUser } from "@/lib/role";
 
@@ -15,6 +17,7 @@ export default function SignInScreen() {
   const { user } = useUser();
   const pathname = usePathname();
   const { colors } = useTheme();
+  const { t } = useLanguage();
   const { isLoaded, signIn, setActive } = useSignIn();
   const { startSSOFlow } = useSSO();
   const router = useRouter();
@@ -91,9 +94,9 @@ export default function SignInScreen() {
         return;
       }
 
-      setErrorMessage("Sign-in requires additional steps that are not implemented on this screen.");
+      setErrorMessage(t("auth.additionalSteps"));
     } catch (error: any) {
-      setErrorMessage(error?.errors?.[0]?.longMessage ?? error?.message ?? "Unable to sign in.");
+      setErrorMessage(error?.errors?.[0]?.longMessage ?? error?.message ?? t("auth.signInFailed"));
     } finally {
       setIsSubmitting(false);
     }
@@ -132,9 +135,9 @@ export default function SignInScreen() {
         return;
       }
 
-      setErrorMessage("Google sign-in could not be completed.");
+      setErrorMessage(t("auth.googleFailed"));
     } catch (error: any) {
-      setErrorMessage(error?.errors?.[0]?.longMessage ?? error?.message ?? "Unable to sign in with Google.");
+      setErrorMessage(error?.errors?.[0]?.longMessage ?? error?.message ?? t("auth.googleFailed"));
     } finally {
       setIsSubmitting(false);
     }
@@ -148,11 +151,11 @@ export default function SignInScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Sign in</Text>
+      <Text style={styles.title}>{t("auth.signInTitle")}</Text>
       <RolePicker value={selectedRole} onChange={setSelectedRole} colors={colors} />
       <TextInput
         style={styles.input}
-        placeholder="Email"
+        placeholder={t("auth.email")}
         placeholderTextColor={colors.textSubtle}
         autoCapitalize="none"
         keyboardType="email-address"
@@ -161,7 +164,7 @@ export default function SignInScreen() {
       />
       <TextInput
         style={styles.input}
-        placeholder="Password"
+        placeholder={t("auth.password")}
         placeholderTextColor={colors.textSubtle}
         secureTextEntry
         value={password}
@@ -170,17 +173,29 @@ export default function SignInScreen() {
 
       {errorMessage ? <Text style={styles.error}>{errorMessage}</Text> : null}
 
-      <Pressable style={styles.button} onPress={onSignInPress} disabled={isSubmitting || !isLoaded}>
-        {isSubmitting ? <ActivityIndicator color="#ffffff" /> : <Text style={styles.buttonText}>Continue</Text>}
-      </Pressable>
+      <LoadingButton
+        title={t("auth.continue")}
+        loading={isSubmitting}
+        disabled={!isLoaded}
+        onPress={() => void onSignInPress()}
+        backgroundColor={colors.primary}
+        textColor={colors.primaryText}
+        spinnerColor={colors.primaryText}
+        style={styles.button}
+      />
 
-      <Pressable style={styles.secondaryButton} onPress={onGooglePress} disabled={isSubmitting || !isLoaded}>
-        <Text style={styles.secondaryButtonText}>Continue with Google</Text>
-      </Pressable>
+      <LoadingButton
+        title={t("auth.continueWithGoogle")}
+        loading={isSubmitting}
+        disabled={!isLoaded}
+        onPress={() => void onGooglePress()}
+        backgroundColor={colors.surface}
+        textColor={colors.text}
+        spinnerColor={colors.text}
+        style={styles.secondaryButton}
+      />
 
-      <Pressable onPress={() => router.push("/sign-up")}>
-        <Text style={styles.link}>Create an account</Text>
-      </Pressable>
+      <Text style={styles.link}>{t("auth.createAccount")}</Text>
 
       <BottomNavBar currentPath={pathname} />
     </View>
@@ -224,30 +239,12 @@ const createStyles = (colors: {
       color: colors.text,
     },
     button: {
-      backgroundColor: colors.primary,
-      borderRadius: 12,
-      alignItems: "center",
-      paddingVertical: 14,
       marginTop: 4,
-    },
-    buttonText: {
-      color: colors.primaryText,
-      fontWeight: "700",
-      fontSize: 16,
     },
     secondaryButton: {
       marginTop: 10,
-      borderRadius: 12,
       borderWidth: 1,
       borderColor: colors.border,
-      alignItems: "center",
-      paddingVertical: 14,
-      backgroundColor: colors.surface,
-    },
-    secondaryButtonText: {
-      color: colors.text,
-      fontWeight: "700",
-      fontSize: 16,
     },
     error: {
       color: "#b91c1c",
