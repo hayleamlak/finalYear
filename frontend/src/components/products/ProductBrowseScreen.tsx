@@ -225,7 +225,7 @@ export function ProductBrowseScreen() {
                 </Text>
                 <View style={styles.cardFooter}>
                   <Text style={styles.cardMeta}>{t(`browse.stock.${getStockLabel(item.stock)}` as any)}</Text>
-                  <Text style={styles.cardMeta}>{item.stock} {t("product.inStock")}</Text>
+                  <Text style={styles.cardMeta}>{item.stock} kg</Text>
                 </View>
               </Pressable>
 

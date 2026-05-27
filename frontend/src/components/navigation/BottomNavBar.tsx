@@ -43,33 +43,62 @@ export function BottomNavBar({ currentPath, accountActive, onAccountPress }: Bot
   const insets = useSafeAreaInsets();
   const isFarmer = isUserLoaded && getRoleFromUser(user) === "farmer";
   const activePath = normalizePath(currentPath, !!isSignedIn);
-  const accountHref = isSignedIn && isFarmer ? "/farmer-dashboard?tab=profile" : isSignedIn ? "/account" : "/sign-in";
-  const isAccountActive = accountActive ?? (activePath === "/account" || activePath === "/sign-in" || (isFarmer && activePath === "/farmer-dashboard"));
-  const isProductsTabActive = isFarmer && activePath === "/farmer-dashboard" && params.tab === "products";
+  const isFarmerDashboard = isFarmer && activePath === "/farmer-dashboard";
+  const farmerTab = params.tab ?? "analytics";
+  const accountHref = isSignedIn && isFarmer ? "/farmer-dashboard?tab=account" : isSignedIn ? "/account" : "/sign-in";
+  const isAccountActive = accountActive ?? (activePath === "/account" || activePath === "/sign-in" || (isFarmer && farmerTab === "account"));
 
   const styles = createStyles(colors);
 
   return (
     <View style={styles.wrapper}>
       <View style={[styles.inner, { marginBottom: insets.bottom > 0 ? insets.bottom : 10 }]}>
-        <Pressable style={styles.item} onPress={() => router.push("/products") }>
-          <MaterialCommunityIcons
-            name="storefront-outline"
-            size={20}
-            color={activePath === "/products" ? colors.accent : colors.textSubtle}
-          />
-          <Text style={[styles.label, activePath === "/products" && styles.labelActive]}>Products</Text>
-        </Pressable>
         {isFarmer ? (
-          <Pressable style={styles.item} onPress={() => router.push("/farmer-dashboard?tab=products") }>
-            <MaterialCommunityIcons
-              name="plus-circle-outline"
-              size={20}
-              color={isProductsTabActive ? colors.accent : colors.textSubtle}
-            />
-            <Text style={[styles.label, isProductsTabActive && styles.labelActive]}>Add Product</Text>
-          </Pressable>
+          <>
+            <Pressable style={styles.item} onPress={() => router.push("/farmer-dashboard?tab=analytics") }>
+              <MaterialCommunityIcons
+                name="chart-line"
+                size={20}
+                color={farmerTab === "analytics" ? colors.accent : colors.textSubtle}
+              />
+              <Text numberOfLines={1} ellipsizeMode="tail" style={[styles.label, farmerTab === "analytics" && styles.labelActive]}>Analytics</Text>
+            </Pressable>
+            <Pressable style={styles.item} onPress={() => router.push("/farmer-dashboard?tab=products") }>
+              <MaterialCommunityIcons
+                name="package-variant-closed"
+                size={20}
+                color={farmerTab === "products" ? colors.accent : colors.textSubtle}
+              />
+              <Text numberOfLines={1} ellipsizeMode="tail" style={[styles.label, farmerTab === "products" && styles.labelActive]}>My Product</Text>
+            </Pressable>
+            <Pressable style={styles.item} onPress={() => router.push("/farmer-dashboard?tab=orders") }>
+              <MaterialCommunityIcons
+                name="clipboard-list-outline"
+                size={20}
+                color={farmerTab === "orders" ? colors.accent : colors.textSubtle}
+              />
+              <Text numberOfLines={1} ellipsizeMode="tail" style={[styles.label, farmerTab === "orders" && styles.labelActive]}>Order</Text>
+            </Pressable>
+            <Pressable style={styles.item} onPress={() => router.push("/farmer-dashboard?tab=add") }>
+              <MaterialCommunityIcons
+                name="plus-circle-outline"
+                size={20}
+                color={farmerTab === "add" ? colors.accent : colors.textSubtle}
+              />
+              <Text numberOfLines={1} ellipsizeMode="tail" style={[styles.label, farmerTab === "add" && styles.labelActive]}>Add Product</Text>
+            </Pressable>
+          </>
         ) : (
+          <Pressable style={styles.item} onPress={() => router.push("/products") }>
+            <MaterialCommunityIcons
+              name="storefront-outline"
+              size={20}
+              color={activePath === "/products" ? colors.accent : colors.textSubtle}
+            />
+            <Text style={[styles.label, activePath === "/products" && styles.labelActive]}>Products</Text>
+          </Pressable>
+        )}
+        {isFarmer ? null : (
           <Pressable style={styles.item} onPress={() => router.push("/cart") }>
             <MaterialCommunityIcons
               name="cart-outline"
@@ -92,7 +121,7 @@ export function BottomNavBar({ currentPath, accountActive, onAccountPress }: Bot
             size={20}
             color={isAccountActive ? colors.accent : colors.textSubtle}
           />
-          <Text style={[styles.label, isAccountActive && styles.labelActive]}>Account</Text>
+          <Text numberOfLines={1} ellipsizeMode="tail" style={[styles.label, isAccountActive && styles.labelActive]}>Account</Text>
         </Pressable>
       </View>
     </View>
@@ -127,10 +156,12 @@ const createStyles = (colors: {
       borderWidth: 1,
       borderColor: colors.border,
       borderRadius: 18,
-      minHeight: 58,
+      minHeight: 64,
+      paddingVertical: 6,
+      paddingHorizontal: 4,
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "space-around",
+      justifyContent: "space-between",
       shadowColor: "#000",
       shadowOpacity: 0.12,
       shadowRadius: 12,
@@ -138,8 +169,10 @@ const createStyles = (colors: {
       elevation: 6,
     },
     item: {
-      paddingVertical: 12,
-      paddingHorizontal: 8,
+      flex: 1,
+      minWidth: 0,
+      paddingVertical: 8,
+      paddingHorizontal: 4,
       borderRadius: 12,
       alignItems: "center",
       gap: 4,
@@ -147,13 +180,16 @@ const createStyles = (colors: {
     label: {
       color: colors.textSubtle,
       fontWeight: "700",
-      fontSize: 13,
+      fontSize: 10,
+      textAlign: "center",
+      flexShrink: 1,
+      width: "100%",
     },
     labelActive: {
       color: colors.accent,
       backgroundColor: colors.accentSoft,
-      paddingHorizontal: 10,
-      paddingVertical: 6,
+      paddingHorizontal: 6,
+      paddingVertical: 3,
       borderRadius: 10,
       overflow: "hidden",
     },

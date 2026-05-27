@@ -34,7 +34,7 @@ import { getRoleFromUser, toBackendRole } from "@/lib/role";
 import { FarmerDashboardResponse, FarmerOrderItem, FarmerOrderStatus, FarmerProduct } from "@/types/farmer";
 import { ProductSummary } from "@/types/product";
 
-type FarmerTab = "overview" | "products" | "orders" | "earnings" | "profile";
+type FarmerTab = "analytics" | "products" | "orders" | "add" | "account";
 type ProductFormMode = "create" | "edit";
 type ProductFormErrors = Partial<Record<"name" | "price" | "stock" | "image" | "detail", string>>;
 
@@ -52,8 +52,6 @@ const formatPrice = (value: number, locale: string) =>
   }).format(value);
 
 const orderActions: Array<{ label: string; status: FarmerOrderStatus; icon: keyof typeof MaterialCommunityIcons.glyphMap }> = [
-  { label: "Accept", status: "PROCESSING", icon: "check-circle-outline" },
-  { label: "Reject", status: "CANCELLED", icon: "close-circle-outline" },
   { label: "Packed", status: "SHIPPED", icon: "package-variant-closed" },
   { label: "Delivered", status: "DELIVERED", icon: "truck-check-outline" },
 ];
@@ -61,7 +59,7 @@ const orderActions: Array<{ label: string; status: FarmerOrderStatus; icon: keyo
 export default function FarmerDashboardScreen() {
   const router = useRouter();
   const pathname = usePathname();
-  const params = useLocalSearchParams<{ tab?: FarmerTab }>();
+  const params = useLocalSearchParams<{ tab?: string }>();
   const { isSignedIn, getToken, isLoaded } = useAuth();
   const { signOut } = useClerk();
   const { user, isLoaded: isUserLoaded } = useUser();
@@ -69,7 +67,7 @@ export default function FarmerDashboardScreen() {
   const { t, locale } = useLanguage();
   const styles = createStyles(colors);
 
-  const [activeTab, setActiveTab] = useState<FarmerTab>("overview");
+  const [activeTab, setActiveTab] = useState<FarmerTab>("analytics");
   const [dashboard, setDashboard] = useState<FarmerDashboardResponse["data"] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -103,6 +101,7 @@ export default function FarmerDashboardScreen() {
     const totalInventoryValue = products.reduce((sum, item) => sum + item.price * item.stock, 0);
     const latestProducts = products.slice(0, 5);
     const lowStockProducts = products.filter((item) => item.stock <= 5).slice(0, 5);
+    const stockSnapshot = [...products].sort((left, right) => right.stock - left.stock).slice(0, 5);
     const latestOrders = orderItems.slice(0, 5);
     const transactions = orderItems
       .filter((item) => item.order.payment)
@@ -113,6 +112,7 @@ export default function FarmerDashboardScreen() {
       totalInventoryValue,
       latestProducts,
       lowStockProducts,
+      stockSnapshot,
       latestOrders,
       transactions,
     };
@@ -146,14 +146,33 @@ export default function FarmerDashboardScreen() {
   }, [isSignedIn]);
 
   useEffect(() => {
-    if (
-      params.tab === "overview" ||
-      params.tab === "products" ||
-      params.tab === "orders" ||
-      params.tab === "earnings" ||
-      params.tab === "profile"
-    ) {
-      setActiveTab(params.tab);
+    if (params.tab === "overview" || params.tab === "analytics") {
+      setActiveTab("analytics");
+      return;
+    }
+
+    if (params.tab === "products") {
+      setActiveTab("products");
+      return;
+    }
+
+    if (params.tab === "orders") {
+      setActiveTab("orders");
+      return;
+    }
+
+    if (params.tab === "earnings") {
+      setActiveTab("analytics");
+      return;
+    }
+
+    if (params.tab === "add") {
+      setActiveTab("add");
+      return;
+    }
+
+    if (params.tab === "profile" || params.tab === "account") {
+      setActiveTab("account");
     }
   }, [params.tab]);
 
@@ -174,7 +193,7 @@ export default function FarmerDashboardScreen() {
     setEditImage(product.image);
     setEditDetail(product.product_detail ?? "");
     setEditFormErrors({});
-    setActiveTab("products");
+    setActiveTab("add");
   };
 
   const clearEditing = () => {
@@ -219,7 +238,7 @@ export default function FarmerDashboardScreen() {
     }
 
     if (!Number.isFinite(numericStock) || numericStock < 0 || !Number.isInteger(numericStock)) {
-      nextErrors.stock = "Enter a whole stock number of 0 or more.";
+      nextErrors.stock = "Enter a whole kg amount of 0 or more.";
     }
 
     if (!formImage.trim()) {
@@ -498,13 +517,49 @@ export default function FarmerDashboardScreen() {
 
         {!isLoading && dashboard ? (
           <>
-            {activeTab === "overview" ? (
+            {activeTab === "analytics" ? (
               <>
                 <View style={styles.statsGrid}>
                   <StatCard icon="package-variant-closed" label={t("farmer.products")} value={String(dashboard.summary.totalProducts)} />
                   <StatCard icon="clipboard-list-outline" label={t("farmer.pendingOrders")} value={String(dashboard.summary.pendingOrders)} />
                   <StatCard icon="cash-multiple" label={t("farmer.earnings")} value={formatPrice(dashboard.summary.totalEarnings, locale)} />
                   <StatCard icon="star-outline" label={t("farmer.rating")} value={dashboard.summary.averageRating.toFixed(1)} />
+                </View>
+
+                <View style={styles.card}>
+                  <View style={styles.sectionHeader}>
+                    <Text style={styles.cardTitle}>Stock Snapshot</Text>
+                    <Text style={styles.badgeText}>{computed.stockSnapshot.length}</Text>
+                  </View>
+                  {computed.stockSnapshot.length === 0 ? (
+                    <Text style={styles.helperText}>Add products to see your stock chart.</Text>
+                  ) : (
+                    <View style={styles.stockChart}>
+                      {computed.stockSnapshot.map((product) => {
+                        const maxStock = Math.max(...computed.stockSnapshot.map((item) => item.stock), 1);
+                        const barWidth = `${Math.max((product.stock / maxStock) * 100, product.stock > 0 ? 12 : 4)}%` as `${number}%`;
+
+                        return (
+                          <View key={product.id} style={styles.stockChartRow}>
+                            <View style={styles.stockChartHeader}>
+                              <Text style={styles.stockChartLabel} numberOfLines={1}>
+                                {product.product_name}
+                              </Text>
+                              <Text style={styles.stockChartValue}>{product.stock} kg</Text>
+                            </View>
+                            <View style={styles.stockChartTrack}>
+                              <View
+                                style={[
+                                  styles.stockChartFill,
+                                  { width: barWidth, backgroundColor: product.stock <= 5 ? "#f59e0b" : colors.accent },
+                                ]}
+                              />
+                            </View>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  )}
                 </View>
 
                 <View style={styles.card}>
@@ -521,47 +576,8 @@ export default function FarmerDashboardScreen() {
                           <MaterialCommunityIcons name="alert-circle-outline" size={18} color="#b45309" />
                           <Text style={styles.productTitle}>{product.product_name}</Text>
                         </View>
-                        <Text style={styles.warningText}>{product.stock === 0 ? "Out" : `${product.stock} left`}</Text>
+                        <Text style={styles.warningText}>{product.stock === 0 ? "Out" : `${product.stock} kg left`}</Text>
                       </View>
-                    ))
-                  )}
-                </View>
-
-                <View style={styles.card}>
-                  <View style={styles.sectionHeader}>
-                    <Text style={styles.cardTitle}>Recent Orders</Text>
-                    <Pressable onPress={() => setActiveTab("orders")}>
-                      <Text style={styles.linkText}>View all</Text>
-                    </Pressable>
-                  </View>
-                  {computed.latestOrders.length === 0 ? (
-                    <Text style={styles.helperText}>No incoming orders yet.</Text>
-                  ) : (
-                    computed.latestOrders.map((item) => (
-                      <OrderCard key={item.id} item={item} compact onPress={() => setSelectedOrderItem(item)} />
-                    ))
-                  )}
-                </View>
-
-                <View style={styles.card}>
-                  <View style={styles.sectionHeader}>
-                    <Text style={styles.cardTitle}>Latest Products</Text>
-                    <Pressable onPress={() => setActiveTab("products")}>
-                      <Text style={styles.linkText}>Manage</Text>
-                    </Pressable>
-                  </View>
-                  {computed.latestProducts.length === 0 ? (
-                    <Text style={styles.helperText}>No products yet.</Text>
-                  ) : (
-                    computed.latestProducts.map((product) => (
-                      <ProductCard
-                        key={product.id}
-                        product={product}
-                        busy={busyId === product.id}
-                        onEdit={() => startEditing(product)}
-                        onToggle={() => void onToggleAvailability(product)}
-                        onDelete={() => onDeleteProduct(product)}
-                      />
                     ))
                   )}
                 </View>
@@ -571,79 +587,12 @@ export default function FarmerDashboardScreen() {
             {activeTab === "products" ? (
               <>
                 <View style={styles.card}>
-                  <Text style={styles.cardTitle}>{editingProduct ? "Edit Product" : "Add Product"}</Text>
-                  <ProductImagePicker
-                    imageUri={editingProduct ? editImage : image}
-                    error={editingProduct ? editFormErrors.image : createFormErrors.image}
-                    onPress={() => void pickProductImage(editingProduct ? "edit" : "create")}
-                  />
-                  <TextInput
-                    style={[styles.input, (editingProduct ? editFormErrors.name : createFormErrors.name) && styles.inputError]}
-                    placeholder="Product name"
-                    placeholderTextColor={colors.textMuted}
-                    value={editingProduct ? editName : name}
-                    onChangeText={editingProduct ? setEditName : setName}
-                  />
-                  <FieldError message={editingProduct ? editFormErrors.name : createFormErrors.name} />
-                  <View style={styles.twoColumn}>
-                    <View style={styles.flexInput}>
-                      <TextInput
-                        style={[styles.input, (editingProduct ? editFormErrors.price : createFormErrors.price) && styles.inputError]}
-                        placeholder="Price"
-                        placeholderTextColor={colors.textMuted}
-                        value={editingProduct ? editPrice : price}
-                        onChangeText={editingProduct ? setEditPrice : setPrice}
-                        keyboardType="decimal-pad"
-                      />
-                      <FieldError message={editingProduct ? editFormErrors.price : createFormErrors.price} />
-                    </View>
-                    <View style={styles.flexInput}>
-                      <TextInput
-                        style={[styles.input, (editingProduct ? editFormErrors.stock : createFormErrors.stock) && styles.inputError]}
-                        placeholder="Stock"
-                        placeholderTextColor={colors.textMuted}
-                        value={editingProduct ? editStock : stock}
-                        onChangeText={editingProduct ? setEditStock : setStock}
-                        keyboardType="number-pad"
-                      />
-                      <FieldError message={editingProduct ? editFormErrors.stock : createFormErrors.stock} />
-                    </View>
-                  </View>
-                  <TextInput
-                    style={[
-                      styles.input,
-                      styles.multilineInput,
-                      (editingProduct ? editFormErrors.detail : createFormErrors.detail) && styles.inputError,
-                    ]}
-                    placeholder="Description, category, unit type, seasonal notes"
-                    placeholderTextColor={colors.textMuted}
-                    value={editingProduct ? editDetail : detail}
-                    onChangeText={editingProduct ? setEditDetail : setDetail}
-                    multiline
-                  />
-                  <FieldError message={editingProduct ? editFormErrors.detail : createFormErrors.detail} />
-                  <View style={styles.actionRow}>
-                    {editingProduct ? (
-                      <Pressable style={styles.secondaryButton} onPress={clearEditing}>
-                        <Text style={styles.secondaryButtonText}>Cancel</Text>
-                      </Pressable>
-                    ) : null}
-                    <Pressable
-                      style={styles.primaryButton}
-                      disabled={isSubmitting}
-                      onPress={() => void (editingProduct ? onSaveProduct() : onCreateProduct())}
-                    >
-                      {isSubmitting ? (
-                        <ActivityIndicator color={colors.primaryText} />
-                      ) : (
-                        <Text style={styles.primaryButtonText}>{editingProduct ? "Save Product" : "Create Product"}</Text>
-                      )}
+                  <View style={styles.sectionHeader}>
+                    <Text style={styles.cardTitle}>{t("farmer.productManagement")}</Text>
+                    <Pressable onPress={() => setActiveTab("add") }>
+                      <Text style={styles.linkText}>{t("farmer.addProduct")}</Text>
                     </Pressable>
                   </View>
-                </View>
-
-                <View style={styles.card}>
-                  <Text style={styles.cardTitle}>Product Management</Text>
                   {products.length === 0 ? (
                     <Text style={styles.helperText}>No products yet.</Text>
                   ) : (
@@ -664,12 +613,12 @@ export default function FarmerDashboardScreen() {
 
             {activeTab === "orders" ? (
               <View style={styles.card}>
-                <Text style={styles.cardTitle}>Incoming Orders</Text>
-                  {orderItems.length === 0 ? (
+                <Text style={styles.cardTitle}>{t("farmer.incomingOrders")}</Text>
+                {orderItems.length === 0 ? (
                   <Text style={styles.helperText}>No incoming orders yet.</Text>
                 ) : (
                   orderItems.map((item) => (
-                      <OrderCard key={item.id} item={item} onPress={() => setSelectedOrderItem(item)}>
+                    <OrderCard key={item.id} item={item} onPress={() => setSelectedOrderItem(item)}>
                       <View style={styles.orderActions}>
                         {orderActions.map((action) => (
                           <Pressable
@@ -689,80 +638,123 @@ export default function FarmerDashboardScreen() {
               </View>
             ) : null}
 
-            {activeTab === "earnings" ? (
-              <>
-                <View style={styles.statsGrid}>
-                  <StatCard icon="calendar-today" label={t("farmer.today")} value={formatPrice(dashboard.earnings.today, locale)} />
-                  <StatCard icon="calendar-week" label={t("farmer.thisWeek")} value={formatPrice(dashboard.earnings.week, locale)} />
-                  <StatCard icon="calendar-month" label={t("farmer.thisMonth")} value={formatPrice(dashboard.earnings.month, locale)} />
-                  <StatCard icon="cash-check" label={t("farmer.paid")} value={formatPrice(dashboard.earnings.paidAmount, locale)} />
+            {activeTab === "add" ? (
+              <View style={styles.card}>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.cardTitle}>{editingProduct ? t("farmer.editProduct") : t("farmer.addProduct")}</Text>
+                  <Pressable onPress={() => setActiveTab("products")}>
+                    <Text style={styles.linkText}>{t("farmer.productManagement")}</Text>
+                  </Pressable>
                 </View>
-                <View style={styles.card}>
-                  <Text style={styles.cardTitle}>Payment Summary</Text>
-                  <InfoRow label={t("farmer.paidPayments")} value={formatPrice(dashboard.earnings.paidAmount, locale)} />
-                  <InfoRow label={t("farmer.pendingPayments")} value={formatPrice(dashboard.earnings.pendingAmount, locale)} />
-                  <InfoRow label={t("farmer.totalEarnings")} value={formatPrice(dashboard.earnings.total, locale)} />
+                <ProductImagePicker
+                  imageUri={editingProduct ? editImage : image}
+                  error={editingProduct ? editFormErrors.image : createFormErrors.image}
+                  onPress={() => void pickProductImage(editingProduct ? "edit" : "create")}
+                />
+                <TextInput
+                  style={[styles.input, (editingProduct ? editFormErrors.name : createFormErrors.name) && styles.inputError]}
+                  placeholder={t("farmer.productName")}
+                  placeholderTextColor={colors.textMuted}
+                  value={editingProduct ? editName : name}
+                  onChangeText={editingProduct ? setEditName : setName}
+                />
+                <FieldError message={editingProduct ? editFormErrors.name : createFormErrors.name} />
+                <View style={styles.twoColumn}>
+                  <View style={styles.flexInput}>
+                    <TextInput
+                      style={[styles.input, (editingProduct ? editFormErrors.price : createFormErrors.price) && styles.inputError]}
+                      placeholder={t("farmer.price")}
+                      placeholderTextColor={colors.textMuted}
+                      value={editingProduct ? editPrice : price}
+                      onChangeText={editingProduct ? setEditPrice : setPrice}
+                      keyboardType="decimal-pad"
+                    />
+                    <FieldError message={editingProduct ? editFormErrors.price : createFormErrors.price} />
+                  </View>
+                  <View style={styles.flexInput}>
+                    <TextInput
+                      style={[styles.input, (editingProduct ? editFormErrors.stock : createFormErrors.stock) && styles.inputError]}
+                      placeholder={`${t("farmer.stock")}`}
+                      placeholderTextColor={colors.textMuted}
+                      value={editingProduct ? editStock : stock}
+                      onChangeText={editingProduct ? setEditStock : setStock}
+                      keyboardType="number-pad"
+                    />
+                    <FieldError message={editingProduct ? editFormErrors.stock : createFormErrors.stock} />
+                  </View>
                 </View>
-                <View style={styles.card}>
-                  <Text style={styles.cardTitle}>Chapa Transactions</Text>
-                  {computed.transactions.length === 0 ? (
-                    <Text style={styles.helperText}>No payment transactions yet.</Text>
-                  ) : (
-                    computed.transactions.map((item) => (
-                      <View key={`${item.id}-payment`} style={styles.transactionRow}>
-                        <View style={styles.productLeft}>
-                          <MaterialCommunityIcons name="credit-card-check-outline" size={18} color={colors.accent} />
-                          <View>
-                            <Text style={styles.productTitle}>{formatPrice(item.price * item.quantity, locale)}</Text>
-                            <Text style={styles.productMeta}>{item.order.payment?.provider ?? "Payment"} | {item.order.payment?.status}</Text>
-                          </View>
-                        </View>
-                        <Text style={styles.productMeta}>{item.order.payment?.transactionRef?.slice(-8) ?? "-"}</Text>
-                      </View>
-                    ))
-                  )}
+                <TextInput
+                  style={[
+                    styles.input,
+                    styles.multilineInput,
+                    (editingProduct ? editFormErrors.detail : createFormErrors.detail) && styles.inputError,
+                  ]}
+                  placeholder={t("farmer.description")}
+                  placeholderTextColor={colors.textMuted}
+                  value={editingProduct ? editDetail : detail}
+                  onChangeText={editingProduct ? setEditDetail : setDetail}
+                  multiline
+                />
+                <FieldError message={editingProduct ? editFormErrors.detail : createFormErrors.detail} />
+                <View style={styles.actionRow}>
+                  {editingProduct ? (
+                    <Pressable style={styles.secondaryButton} onPress={clearEditing}>
+                      <Text style={styles.secondaryButtonText}>Cancel</Text>
+                    </Pressable>
+                  ) : null}
+                  <Pressable
+                    style={styles.primaryButton}
+                    disabled={isSubmitting}
+                    onPress={() => void (editingProduct ? onSaveProduct() : onCreateProduct())}
+                  >
+                    {isSubmitting ? (
+                      <ActivityIndicator color={colors.primaryText} />
+                    ) : (
+                      <Text style={styles.primaryButtonText}>{editingProduct ? t("farmer.saveProduct") : t("farmer.createProduct")}</Text>
+                    )}
+                  </Pressable>
                 </View>
-              </>
+              </View>
             ) : null}
 
-            {activeTab === "profile" ? (
+            {activeTab === "account" ? (
               <>
                 <View style={styles.card}>
-                  <Text style={styles.cardTitle}>Farmer Profile</Text>
-                  <InfoRow label="Farm name" value={`${dashboard.farmer.first_name} ${dashboard.farmer.last_name}`.trim()} />
-                  <InfoRow label="Owner email" value={dashboard.farmer.email} />
-                  <InfoRow label="Phone" value="Add in profile settings" />
-                  <InfoRow label="Location" value={dashboard.farmer.address ?? "No location yet"} />
-                  <InfoRow label="Status" value={dashboard.farmer.status} />
+                  <Text style={styles.cardTitle}>{t("farmer.farmerProfile")}</Text>
+                  <InfoRow label={t("farmer.farmName")} value={dashboard.farmer ? `${dashboard.farmer.first_name} ${dashboard.farmer.last_name}`.trim() : ""} />
+                  <InfoRow label={t("farmer.ownerEmail")} value={dashboard.farmer?.email ?? ""} />
+                  <InfoRow label={t("farmer.phone")} value={t("farmer.addInProfileSettings")} />
+                  <InfoRow label={t("farmer.location")} value={dashboard.farmer?.address ?? t("farmer.noLocationYet")} />
+                  <InfoRow label={t("farmer.status")} value={dashboard.farmer?.status ?? ""} />
                   <InfoRow
-                    label="Coordinates"
+                    label={t("farmer.coordinates")}
                     value={
-                      dashboard.farmer.latitude && dashboard.farmer.longitude
+                      dashboard.farmer?.latitude && dashboard.farmer?.longitude
                         ? `${dashboard.farmer.latitude.toFixed(4)}, ${dashboard.farmer.longitude.toFixed(4)}`
-                        : "Not set"
+                        : t("farmer.notSet")
                     }
                   />
                   <Pressable style={styles.primaryButton} onPress={() => router.push("/profile")}>
-                    <Text style={styles.primaryButtonText}>Edit Profile</Text>
+                    <Text style={styles.primaryButtonText}>{t("farmer.editProfile")}</Text>
                   </Pressable>
                 </View>
 
                 <View style={styles.card}>
                   <View style={styles.sectionHeader}>
-                    <Text style={styles.cardTitle}>Settings</Text>
+                    <Text style={styles.cardTitle}>{t("farmer.settings")}</Text>
                     <MaterialCommunityIcons name="tune-variant" size={18} color={colors.accent} />
                   </View>
                   <View style={styles.settingsRow}>
                     <View style={styles.menuLeft}>
                       <MaterialCommunityIcons name="translate" size={18} color={colors.text} />
-                      <Text style={styles.menuText}>Language</Text>
+                      <Text style={styles.menuText}>{t("farmer.language")}</Text>
                     </View>
                     <LanguageSwitcher />
                   </View>
                   <View style={styles.menuRowNoBorder}>
                     <View style={styles.menuLeft}>
                       <MaterialCommunityIcons name="theme-light-dark" size={18} color={colors.text} />
-                      <Text style={styles.menuText}>Appearance</Text>
+                      <Text style={styles.menuText}>{t("farmer.appearance")}</Text>
                     </View>
                     <ThemeToggleButton />
                   </View>
@@ -774,17 +766,17 @@ export default function FarmerDashboardScreen() {
                     }}
                   >
                     <MaterialCommunityIcons name="logout" size={16} color={colors.primaryText} />
-                    <Text style={styles.logoutButtonText}>Logout</Text>
+                    <Text style={styles.logoutButtonText}>{t("farmer.logout")}</Text>
                   </Pressable>
                 </View>
 
                 <View style={styles.card}>
                   <View style={styles.sectionHeader}>
-                    <Text style={styles.cardTitle}>Reviews and Ratings</Text>
+                    <Text style={styles.cardTitle}>{t("farmer.reviewsAndRatings")}</Text>
                     <Text style={styles.badgeText}>{dashboard.summary.averageRating.toFixed(1)} / 5</Text>
                   </View>
                   {reviews.length === 0 ? (
-                    <Text style={styles.helperText}>No reviews yet.</Text>
+                    <Text style={styles.helperText}>{t("farmer.noReviewsYet")}</Text>
                   ) : (
                     reviews.map((review) => (
                       <View key={review.id} style={styles.reviewRow}>
@@ -807,8 +799,8 @@ export default function FarmerDashboardScreen() {
       </ScrollView>
       <BottomNavBar
         currentPath={pathname}
-        accountActive={activeTab === "profile"}
-        onAccountPress={() => setActiveTab("profile")}
+        accountActive={activeTab === "account"}
+        onAccountPress={() => setActiveTab("account")}
       />
 
       <OrderDetailModal
@@ -1093,6 +1085,40 @@ const createStyles = (colors: {
       flexDirection: "row",
       flexWrap: "wrap",
       gap: 10,
+    },
+    stockChart: {
+      gap: 14,
+    },
+    stockChartRow: {
+      gap: 8,
+    },
+    stockChartHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 12,
+    },
+    stockChartLabel: {
+      flex: 1,
+      color: colors.text,
+      fontSize: 14,
+      fontWeight: "700",
+    },
+    stockChartValue: {
+      color: colors.textMuted,
+      fontSize: 12,
+      fontWeight: "700",
+    },
+    stockChartTrack: {
+      width: "100%",
+      height: 12,
+      borderRadius: 999,
+      backgroundColor: colors.surfaceAlt,
+      overflow: "hidden",
+    },
+    stockChartFill: {
+      height: "100%",
+      borderRadius: 999,
     },
     statCard: {
       width: "48%",

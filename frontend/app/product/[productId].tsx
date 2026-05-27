@@ -230,7 +230,7 @@ export default function ProductDetailsScreen() {
                   <Text style={styles.metaPillText}>{t(`product.stock.${getStockLabel(product.stock)}` as any)}</Text>
                 </View>
                 <View style={styles.metaPill}>
-                  <Text style={styles.metaPillText}>{product.stock} {t("product.inStock")}</Text>
+                  <Text style={styles.metaPillText}>{product.stock} kg</Text>
                 </View>
                 <View style={styles.metaPill}>
                   <Text style={styles.metaPillText}>{product.status}</Text>
