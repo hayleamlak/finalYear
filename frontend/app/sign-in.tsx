@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { RolePicker } from "@/components/auth/RolePicker";
+import { LanguageSwitcher } from "@/components/language/LanguageSwitcher";
 import { LoadingButton } from "@/components/ui/LoadingButton";
 import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -155,6 +156,10 @@ export default function SignInScreen() {
       <View style={styles.decorTop} />
       <View style={styles.decorBottom} />
 
+      <View style={styles.languageRow}>
+        <LanguageSwitcher />
+      </View>
+
       <View style={styles.heroCard}>
         <Text style={styles.kicker}>{t("auth.signInTitle")}</Text>
         <Text style={styles.heroTitle}>{t("auth.signInTitle")}</Text>
@@ -261,6 +266,10 @@ const createStyles = (colors: {
       shadowRadius: 20,
       shadowOffset: { width: 0, height: 14 },
       elevation: 4,
+    },
+    languageRow: {
+      marginBottom: 14,
+      alignItems: "flex-end",
     },
     kicker: {
       color: colors.textSubtle,

@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { useCart } from "@/context/CartContext";
 import { useTheme } from "@/context/ThemeContext";
 import { getRoleFromUser } from "@/lib/role";
 
@@ -39,6 +40,7 @@ export function BottomNavBar({ currentPath, accountActive, onAccountPress }: Bot
   const { colors } = useTheme();
   const { isSignedIn } = useAuth();
   const { user, isLoaded: isUserLoaded } = useUser();
+  const { itemCount } = useCart();
   const params = useLocalSearchParams<{ tab?: string }>();
   const insets = useSafeAreaInsets();
   const isFarmer = isUserLoaded && getRoleFromUser(user) === "farmer";
@@ -100,11 +102,18 @@ export function BottomNavBar({ currentPath, accountActive, onAccountPress }: Bot
         )}
         {isFarmer ? null : (
           <Pressable style={styles.item} onPress={() => router.push("/cart") }>
-            <MaterialCommunityIcons
-              name="cart-outline"
-              size={20}
-              color={activePath === "/cart" ? colors.accent : colors.textSubtle}
-            />
+            <View style={styles.iconWrap}>
+              <MaterialCommunityIcons
+                name="cart-outline"
+                size={20}
+                color={activePath === "/cart" ? colors.accent : colors.textSubtle}
+              />
+              {itemCount > 0 ? (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>{itemCount > 99 ? "99+" : String(itemCount)}</Text>
+                </View>
+              ) : null}
+            </View>
             <Text style={[styles.label, activePath === "/cart" && styles.labelActive]}>Cart</Text>
           </Pressable>
         )}
@@ -176,6 +185,29 @@ const createStyles = (colors: {
       borderRadius: 12,
       alignItems: "center",
       gap: 4,
+    },
+    iconWrap: {
+      position: "relative",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    badge: {
+      position: "absolute",
+      top: -8,
+      right: -14,
+      minWidth: 18,
+      height: 18,
+      paddingHorizontal: 4,
+      borderRadius: 999,
+      backgroundColor: colors.accent,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    badgeText: {
+      color: colors.background,
+      fontSize: 10,
+      fontWeight: "900",
+      textAlign: "center",
     },
     label: {
       color: colors.textSubtle,

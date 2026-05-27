@@ -719,13 +719,33 @@ export default function FarmerDashboardScreen() {
 
             {activeTab === "account" ? (
               <>
+                <View style={styles.profileHeroCard}>
+                  <View style={styles.profileAvatar}>
+                    <Text style={styles.profileAvatarText}>
+                      {dashboard.farmer?.first_name?.[0]?.toUpperCase() ?? user?.firstName?.[0]?.toUpperCase() ?? "F"}
+                    </Text>
+                  </View>
+                  <Text style={styles.profileHeroName}>
+                    {dashboard.farmer ? `${dashboard.farmer.first_name} ${dashboard.farmer.last_name}`.trim() : user?.fullName ?? t("farmer.farmerProfile")}
+                  </Text>
+                  <Text style={styles.profileHeroEmail}>{dashboard.farmer?.email ?? user?.primaryEmailAddress?.emailAddress ?? ""}</Text>
+                  <View style={styles.profileHeroRow}>
+                    <View style={styles.profileHeroPill}>
+                      <Text style={styles.profileHeroPillText}>{dashboard.farmer?.status ?? t("farmer.notSet")}</Text>
+                    </View>
+                    <View style={styles.profileHeroPillSoft}>
+                      <Text style={styles.profileHeroPillSoftText}>{t("farmer.farmerProfile")}</Text>
+                    </View>
+                  </View>
+                </View>
+
                 <View style={styles.card}>
                   <Text style={styles.cardTitle}>{t("farmer.farmerProfile")}</Text>
                   <InfoRow label={t("farmer.farmName")} value={dashboard.farmer ? `${dashboard.farmer.first_name} ${dashboard.farmer.last_name}`.trim() : ""} />
                   <InfoRow label={t("farmer.ownerEmail")} value={dashboard.farmer?.email ?? ""} />
                   <InfoRow label={t("farmer.phone")} value={t("farmer.addInProfileSettings")} />
                   <InfoRow label={t("farmer.location")} value={dashboard.farmer?.address ?? t("farmer.noLocationYet")} />
-                  <InfoRow label={t("farmer.status")} value={dashboard.farmer?.status ?? ""} />
+                  <InfoRow label={t("farmer.status")} value={dashboard.farmer?.status ?? t("farmer.notSet")} />
                   <InfoRow
                     label={t("farmer.coordinates")}
                     value={
@@ -747,7 +767,6 @@ export default function FarmerDashboardScreen() {
                   <View style={styles.settingsRow}>
                     <View style={styles.menuLeft}>
                       <MaterialCommunityIcons name="translate" size={18} color={colors.text} />
-                      <Text style={styles.menuText}>{t("farmer.language")}</Text>
                     </View>
                     <LanguageSwitcher />
                   </View>
@@ -1149,6 +1168,70 @@ const createStyles = (colors: {
       padding: 14,
       gap: 10,
     },
+    profileHeroCard: {
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+      padding: 18,
+      gap: 10,
+      alignItems: "center",
+    },
+    profileAvatar: {
+      width: 72,
+      height: 72,
+      borderRadius: 24,
+      backgroundColor: colors.accentSoft,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    profileAvatarText: {
+      color: colors.accent,
+      fontSize: 28,
+      fontWeight: "900",
+    },
+    profileHeroName: {
+      color: colors.text,
+      fontSize: 22,
+      fontWeight: "900",
+      textAlign: "center",
+    },
+    profileHeroEmail: {
+      color: colors.textSubtle,
+      fontSize: 13,
+      fontWeight: "700",
+      textAlign: "center",
+    },
+    profileHeroRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      justifyContent: "center",
+      gap: 8,
+    },
+    profileHeroPill: {
+      backgroundColor: colors.primary,
+      borderRadius: 999,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+    },
+    profileHeroPillText: {
+      color: colors.primaryText,
+      fontWeight: "900",
+      fontSize: 12,
+    },
+    profileHeroPillSoft: {
+      backgroundColor: colors.surfaceAlt,
+      borderRadius: 999,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    profileHeroPillSoftText: {
+      color: colors.text,
+      fontWeight: "800",
+      fontSize: 12,
+    },
     sectionHeader: {
       flexDirection: "row",
       alignItems: "center",
@@ -1346,6 +1429,7 @@ const createStyles = (colors: {
       flexDirection: "row",
       alignItems: "center",
       gap: 8,
+      flex: 1,
     },
     settingsRow: {
       flexDirection: "row",

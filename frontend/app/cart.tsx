@@ -3,7 +3,6 @@ import { useAuth } from "@clerk/clerk-expo";
 import { Redirect, usePathname, useRouter } from "expo-router";
 import { FlatList, Image, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
 
-import { ThemeToggleButton } from "@/components/theme/ThemeToggleButton";
 import { BottomNavBar } from "@/components/navigation/BottomNavBar";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { useCart } from "@/context/CartContext";
@@ -55,10 +54,6 @@ export default function CartScreen() {
             <Text style={styles.countPillText}>{getCountLabel(itemCount)}</Text>
           </View>
         </View>
-        <View style={styles.toggleRow}>
-          <ThemeToggleButton />
-        </View>
-
         {items.length === 0 ? (
           <View style={styles.emptyCard}>
             <Text style={styles.emptyTitle}>{t("cart.emptyTitle")}</Text>
@@ -184,9 +179,6 @@ const createStyles = (colors: {
   backButtonText: {
     color: colors.text,
     fontWeight: "700",
-  },
-  toggleRow: {
-    marginTop: 10,
   },
   title: {
     color: colors.text,
