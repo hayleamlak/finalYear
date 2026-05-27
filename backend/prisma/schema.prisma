@@ -1,0 +1,542 @@
+// suggested adding:
+
+// Review/Rating System for farmers and products
+
+// Order History tracking
+
+// Notification System for order updates
+
+// Coffee Quality Metrics table (acidity, body, flavor notes with standardized values)
+
+// Region/Origin table for geographical indication protection
+
+// generator client {
+//   provider = "prisma-client-js"
+//   // output   = "../app/generated/prisma"
+// }
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  BUYER
+  SELLER
+  LAB_TECHNICIAN
+  CASHIER
+}
+
+enum Status {
+  ACTIVE
+  INACTIVE
+  DORMANT
+  PAUSED
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  PROCESSING
+  SHIPPED
+  DELIVERED // farmer marked delivered
+  CONFIRMED // buyer confirmed delivery
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+}
+
+enum PaymentStatus {
+  PAID
+  UNPAID
+  FAILED
+}
+
+enum address_Type {
+  HOME
+  OFFICE
+}
+
+enum Language {
+  ENGLISH
+  AMHARIC
+  AFAN_OROMO
+}
+
+enum NotificationType {
+  ORDER
+  PAYMENT
+  MESSAGE
+  SYSTEM
+  PRODUCT
+}
+
+enum ReviewType {
+  PRODUCT
+  FARMER
+}
+
+model User {
+  id         String     @id //clerk id
+  first_name String
+  last_name  String
+  email      String     @unique
+  address    String?
+  language   Language   @default(ENGLISH)
+  role       Role       @default(BUYER)
+  wishlist   Wishlist[]
+  order      Order[]
+  cart       Cart? // A user has at most one cart
+  payments   Payment[]
+
+  matchesAsUser1 ChatMatches[] @relation("User1Matches")
+  matchesAsUser2 ChatMatches[] @relation("User2Matches")
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  addresses      Address[]
+  reviews        Review[]
+  reportsSent    Report[]  @relation("UserReports")
+  handledReports Report[]  @relation("HandledReports")
+
+  // chat integration
+  buyerConversations Conversation[] @relation("BuyerConversations")
+  sentMessages       Message[]      @relation("SenderMessages")
+  notification       Notification[]
+
+  status   Status        @default(ACTIVE)
+  sessions UserSession[]
+}
+
+model Farmer {
+  id         String   @id //clerk id
+  first_name String
+  last_name  String
+  email      String   @unique
+  address    String?
+  language   Language @default(ENGLISH)
+  role       Role     @default(SELLER)
+  status     Status   @default(ACTIVE)
+
+  // farm location
+  latitude          Float?
+  longitude         Float?
+  locationUpdatedAt DateTime?
+
+  products Product[] //one farmer can have many products
+  reviews  Review[]
+
+  reports     Report[]
+  reportCount Int      @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // chat integration
+  farmerConversations Conversation[] @relation("FarmerConversations")
+}
+
+model Product {
+  id             String  @id @default(cuid())
+  product_name   String
+  farmer_id      String // FIXED
+  price          Float
+  stock          Int     @default(0)
+  image          String
+  product_detail String?
+  status         Status  @default(ACTIVE)
+
+  farmer       Farmer         @relation(fields: [farmer_id], references: [id], onDelete: Cascade)
+  wishlist     Wishlist[]
+  orderItems   OrderItem[]
+  cartItems    CartItem[]
+  notification Notification[]
+  reviews      Review[]
+
+  description PDescription? // ONE-TO-ONE
+  reports     Report[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Wishlist {
+  id         String   @id @default(cuid())
+  user_id    String
+  product_id String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user    User    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, product_id]) // Prevent duplicates
+}
+
+// model Order {
+//   id         String      @id @default(cuid())
+//   user_id    String
+//   address_id String
+//   status     OrderStatus @default(PENDING)
+
+//   confirmedAt DateTime?
+
+//   user         User           @relation(fields: [user_id], references: [id], onDelete: Cascade)
+//   address      Address        @relation(fields: [address_id], references: [id])
+//   items        OrderItem[]
+//   payment      Payment?
+//   payout       Payout?
+//   notification Notification[]
+//   reviews      Review[]
+//   reports      Report[]
+
+//   createdAt DateTime @default(now())
+//   updatedAt DateTime @updatedAt
+// }
+model Order {
+  id         String      @id @default(cuid())
+  user_id    String
+  address_id String
+  status     OrderStatus @default(PENDING)
+
+  confirmedAt DateTime?
+
+  user         User           @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  address      Address        @relation(fields: [address_id], references: [id])
+  items        OrderItem[]
+  payment_id   String?
+  payment      Payment?       @relation(fields: [payment_id], references: [id])
+  payout       Payout?
+  notification Notification[]
+  reviews      Review[]
+  reports      Report[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model OrderItem {
+  id         String @id @default(cuid())
+  order_id   String
+  product_id String
+  quantity   Int    @default(1)
+  price      Float // price at time of purchase
+
+// new
+  status OrderStatus @default(PAID) 
+
+  order   Order   @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [product_id], references: [id], onDelete: Restrict)
+}
+
+// CART
+model Cart {
+  id        String   @id @default(cuid())
+  user_id   String   @unique // one cart per user
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  items CartItem[] // items inside the cart
+}
+
+model CartItem {
+  id         String @id @default(cuid())
+  cart_id    String
+  product_id String
+  quantity   Int    @default(1)
+
+  cart    Cart    @relation(fields: [cart_id], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [product_id], references: [id], onDelete: Restrict)
+
+  @@unique([cart_id, product_id]) // no duplicate product in same cart
+}
+
+// product desrition table
+model PDescription {
+  id               String   @id @default(cuid())
+  product_id       String   @unique // UNIQUE → 1-to-1
+  product          Product  @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  origion          String //What is the origin of the coffee beans?
+  flavorNotes      String? //What flavor notes does it have?
+  roastLevel       String? //What roast level is it (light / medium / dark)?
+  processingMethod String?
+  processed        String? //How was it processed (washed / natural / honey)?
+  grindType        String? //Does it come whole-bean or pre-ground?
+  grindSizes       String? //What grind sizes are available?
+  isSustainable    String // Is the product carbon-neutral or sustainably produced?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model Contact {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  subject   String?
+  message   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// chat integration
+
+model Conversation {
+  id        String   @id @default(cuid())
+  buyer_id  String
+  farmer_id String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  buyer    User      @relation("BuyerConversations", fields: [buyer_id], references: [id], onDelete: Cascade)
+  farmer   Farmer    @relation("FarmerConversations", fields: [farmer_id], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@unique([buyer_id, farmer_id]) // ensures only one conversation per buyer-farmer pair
+}
+
+model Message {
+  id              String   @id @default(cuid())
+  conversation_id String
+  sender_id       String
+  content         String
+  read            Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  conversation Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+  sender       User         @relation("SenderMessages", fields: [sender_id], references: [id], onDelete: Cascade)
+}
+
+// Notification model
+
+model Notification {
+  id      String           @id @default(cuid())
+  user_id String
+  from    String?
+  title   String
+  message String
+  type    NotificationType
+  read    Boolean          @default(false)
+
+  // Optional relations
+  order_id   String?
+  product_id String?
+
+  user    User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  order   Order?   @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  priority  Int       @default(1) // importance level
+  expiresAt DateTime? // auto-hide after date
+
+  createdAt DateTime @default(now())
+}
+
+// PAYEMENT TABLE
+// model Payment {
+//   id             String        @id @default(cuid())
+//   order_id       String        @unique
+//   user_id        String
+//   amount         Float
+//   method         PaymentMethod
+//   status         PaymentStatus @default(UNPAID)
+//   transactionRef String? // from Chapa / Stripe
+//   provider       String? // "CHAPA", "STRIPE"
+//   paidAt         DateTime?
+//   createdAt      DateTime      @default(now())
+//   updatedAt      DateTime      @updatedAt
+
+//   // Relations
+//   order Order @relation(fields: [order_id], references: [id], onDelete: Cascade)
+//   user  User  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+// }
+model Payment {
+  id             String        @id @default(cuid())
+  user_id        String
+  amount         Float
+  method         PaymentMethod
+  status         PaymentStatus @default(UNPAID)
+  transactionRef String?
+  provider       String?
+  paidAt         DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  orders Order[]
+
+  user User @relation(fields: [user_id], references: [id])
+}
+
+// this is the address table decide to use it or remove it
+// Add to your Prisma schema
+
+model Address {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  fullName     String
+  phone        String
+  addressLine1 String
+  addressLine2 String?
+  city         String
+  region       String
+  country      String  @default("Ethiopia")
+  postalCode   String?
+
+  orders Order[]
+
+  type      address_Type @default(HOME)
+  isDefault Boolean      @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model ChatMatches {
+  id        String   @id @default(cuid())
+  user1_id  String
+  user2_id  String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  user1 User @relation("User1Matches", fields: [user1_id], references: [id], onDelete: Cascade)
+  user2 User @relation("User2Matches", fields: [user2_id], references: [id], onDelete: Cascade)
+
+  @@unique([user1_id, user2_id])
+}
+
+/// after the company sends the money for the farmers the payout.status should changed to SENT. before that it sould be PENDING even if the orderstatus and payment status is paid
+model Payout {
+  id        String    @id @default(cuid())
+  order_id  String    @unique
+  farmer_id String
+  amount    Float
+  status    String    @default("PENDING") // PENDING | SENT | FAILED
+  sentAt    DateTime?
+
+  order Order @relation(fields: [order_id], references: [id], onDelete: Cascade)
+}
+
+// review model
+model Review {
+  id       String     @id @default(cuid())
+  user_id  String
+  order_id String
+  type     ReviewType
+  rating   Int // 1 - 5
+  comment  String?
+
+  // Optional Relations
+  product_id String?
+  farmer_id  String?
+
+  // Relations
+  user    User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  order   Order    @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  farmer  Farmer?  @relation(fields: [farmer_id], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Prevent duplicate review per order per type
+  @@unique([order_id, type], name: "order_id_type")
+  @@index([product_id])
+  @@index([farmer_id])
+  @@index([user_id])
+}
+
+model UserSession {
+  id      String @id @default(cuid())
+  user_id String
+
+  ip      String?
+  country String?
+  city    String?
+
+  userAgent String?
+  device    String? // mobile, desktop
+  browser   String?
+  os        String?
+
+  lastActiveAt DateTime?
+  createdAt    DateTime  @default(now())
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+}
+
+// Report model
+enum ReportType {
+  FARMER
+  PRODUCT
+  ORDER
+  USER
+}
+
+enum ReportReason {
+  SCAM
+  POOR_QUALITY
+  WRONG_ITEM
+  LATE_DELIVERY
+  ABUSE
+  SPAM
+  OTHER
+}
+
+enum ReportStatus {
+  PENDING
+  UNDER_REVIEW
+  RESOLVED
+  REJECTED
+}
+
+model Report {
+  id String @id @default(cuid())
+
+  reporter_id String
+  farmer_id   String?
+  product_id  String?
+  order_id    String?
+
+  type        ReportType
+  reason      ReportReason
+  description String?
+
+  status ReportStatus @default(PENDING)
+
+  handledBy  String?
+  resolution String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  reporter User     @relation("UserReports", fields: [reporter_id], references: [id], onDelete: Cascade)
+  farmer   Farmer?  @relation(fields: [farmer_id], references: [id], onDelete: Cascade)
+  product  Product? @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  order    Order?   @relation(fields: [order_id], references: [id], onDelete: Cascade)
+
+  handledByUser User? @relation("HandledReports", fields: [handledBy], references: [id])
+
+  @@unique([reporter_id, order_id, type])
+}
