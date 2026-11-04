@@ -9,10 +9,7 @@ yarn dev
 # or
 pnpm dev
 # o
-bun dev
-```
-
-
+bun callfor the user input validation
 
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
