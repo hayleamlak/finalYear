@@ -4,8 +4,8 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import createIntlMiddleware from "next-intl/middleware";
 import { routing } from "./i18n/routing";
 import { NextResponse } from "next/server";
-
---------- next-intl middleware ----------
+l
+-------- next-intl middleware ----------
 const intlMiddleware = createIntlMiddleware(routing);
 // ---------- Route matchers (locale-aware) ----------
 const isAuthRoute = createRouteMatcher([
