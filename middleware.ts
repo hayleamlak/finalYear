@@ -12,7 +12,6 @@ const isAuthRoute = createRouteMatcher([
   "/(en|am|om)?/sign-in(.*)",
   "/(en|am|om)?/sign-up(.*)",
 ]);
-
 const isAdminRoute = createRouteMatcher([
   "/(en|am|om)?/admin(.*)",
 ]);
