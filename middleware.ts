@@ -7,7 +7,7 @@ import { NextResponse } from "next/server";
 l
 -------- next-intl middleware ----------
 const intlMiddleware = createIntlMiddleware(routing);
-// ---------- Route matchers (locale-aware) ----------
+// ---------- Route matchers (locale-aware) ---------
 const isAuthRoute = createRouteMatcher([
   "/(en|am|om)?/sign-in(.*)",
   "/(en|am|om)?/sign-up(.*)",
